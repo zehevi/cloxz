@@ -3,22 +3,35 @@ import click
 import csv
 import os
 from datetime import datetime
+import pathlib
 
+CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
+DATA_DIR = CONFIG_DIR / "data"
 CSV_FILE = f"{datetime.now().strftime('%B')}.csv"
+CSV_FILE_PATH = DATA_DIR / CSV_FILE
 
 ACTIONS = {
-    'add-in': 'Add a clock-in item',
-    'add-out': 'Add a clock-out item',
+    'in': 'Add a clock-in item',
+    'out': 'Add a clock-out item',
     'list': 'List all items',
     'delete': 'Delete an item'
 }
+
+
+def create_directories():
+    """Create the necessary directories if they don't exist."""
+    if not os.path.exists(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR)
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
 
 
 @click.command()
 @click.argument('action', type=click.Choice(list(ACTIONS.keys())), required=False)
 @click.pass_context
 def main(ctx, action: str):
-    filename = CSV_FILE
+    create_directories()
+    filename = CSV_FILE_PATH
 
     if not os.path.exists(filename):
         create_file()
@@ -30,7 +43,7 @@ def main(ctx, action: str):
         return
 
     match action:
-        case "add-in" | "add-out":
+        case "in" | "out":
             text = click.prompt('Enter text for the clock entry', type=str)
             add_clock_entry(filename, text, action)
         case "list":
@@ -40,7 +53,7 @@ def main(ctx, action: str):
 
 
 def create_file():
-    filename = CSV_FILE
+    filename = CSV_FILE_PATH
     if not os.path.exists(filename):
         try:
             with open(filename, 'w+'):
@@ -56,15 +69,14 @@ def create_file():
 def add_clock_entry(filename: str, customer: str, action: str):
     date = datetime.now().strftime('%Y-%m-%d')
     time = datetime.now().strftime('%H:%M:%S')
-    clock_action = "in" if action == "add-in" else "out"
 
     with open(filename, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow([date, time, clock_action, customer])
+        writer.writerow([date, time, action, customer])
 
 
 def list_entries(month: int):
-    filename = CSV_FILE
+    filename = CSV_FILE_PATH
     if os.path.exists(filename):
         with open(filename, 'r', newline='') as csvfile:
             reader = csv.reader(csvfile)
