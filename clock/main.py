@@ -28,8 +28,9 @@ def create_directories():
 
 @click.command()
 @click.argument('action', type=click.Choice(list(ACTIONS.keys())), required=False)
+@click.argument('text', type=str, required=False)
 @click.pass_context
-def main(ctx, action: str):
+def main(ctx, action: str, text: str):
     create_directories()
     filename = CSV_FILE_PATH
 
@@ -39,17 +40,23 @@ def main(ctx, action: str):
     if not action:
         action = click.prompt('Choose an action',
                               type=click.Choice(list(ACTIONS.keys())))
-        ctx.invoke(main, action=action)
+        if action in ['in', 'out']:
+            text = click.prompt('Enter text for the clock entry', type=str)
+        elif action == 'delete':
+            delete_entry(filename)
+            return
+        ctx.invoke(main, action=action, text=text)
         return
 
     match action:
         case "in" | "out":
-            text = click.prompt('Enter text for the clock entry', type=str)
             add_clock_entry(filename, text, action)
         case "list":
             month = click.prompt(
                 'Enter the month (name, number)', type=validate_month, default="current")
             list_entries(month)
+        case "delete":
+            delete_entry(filename)
 
 
 def create_file():
@@ -108,6 +115,38 @@ def validate_month(month: str) -> int:
             return month_num
         else:
             raise click.BadParameter(f"Invalid month name: {month}")
+
+
+def delete_entry(filename: str):
+    """Delete an entry from the CSV file."""
+    entries = []
+
+    with open(filename, 'r', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        click.echo(click.style(
+            "Entries:", fg='blue', bold=True))
+        click.echo(click.style(
+            "Line | Date | Time | Action | Customer", fg='green', bold=True))
+        for i, row in enumerate(reader, start=1):
+            date, time, action, customer = row
+            click.echo(click.style(
+                f"{i:>5} | {date:>10} | {time:>8} | {action:>6} | {customer}", fg='white'))
+            entries.append(row)
+
+    line_number = click.prompt(
+        '\nEnter the line number of the entry you want to delete', type=int)
+
+    if 1 <= line_number <= len(entries):
+        del entries[line_number - 1]
+        try:
+            with open(filename, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(entries)
+            click.echo(f"Deleted entry at line {line_number}")
+        except:
+            click.echo("Failed to delete entry")
+    else:
+        click.echo(f"Invalid line number: {line_number}")
 
 
 if __name__ == "__main__":
