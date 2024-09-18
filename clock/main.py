@@ -107,8 +107,6 @@ def list_entries(month: int):
                 if datetime.strptime(date, '%Y-%m-%d').month == month:
                     click.echo(click.style(
                         f"{date:>10} | {time:>8} | {action:>6} | {customer}", fg='white'))
-    else:
-        pass
 
 
 def validate_month(month: str) -> int:
@@ -202,7 +200,3 @@ def modify_entry(filename: str):
             click.echo("Failed to modify entry")
     else:
         click.echo(f"Invalid line number: {line_number}")
-
-
-if __name__ == "__main__":
-    main()
