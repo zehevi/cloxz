@@ -14,7 +14,8 @@ ACTIONS = {
     'in': 'Add a clock-in item',
     'out': 'Add a clock-out item',
     'list': 'List all items',
-    'delete': 'Delete an item'
+    'delete': 'Delete an item',
+    'pwd': 'Prints the data directory path'
 }
 
 
@@ -24,6 +25,11 @@ def create_directories():
         os.makedirs(CONFIG_DIR)
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
+
+
+def print_csv_directory():
+    """Print the CSV file directory path."""
+    click.echo(DATA_DIR)
 
 
 @click.command()
@@ -49,6 +55,8 @@ def main(ctx, action: str, text: str):
         return
 
     match action:
+        case "pwd":
+            print_csv_directory()
         case "in" | "out":
             add_clock_entry(filename, text, action)
         case "list":
