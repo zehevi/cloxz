@@ -3,8 +3,10 @@ import calendar
 import click
 import csv
 import os
-from datetime import datetime
 import pathlib
+from datetime import datetime
+from pynput import keyboard
+
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
 DATA_DIR = CONFIG_DIR / "data"
@@ -62,7 +64,13 @@ def main(ctx, action: str, text: str):
         case "in" | "out":
             add_clock_entry(filename, text, action)
         case "modify":
-            modify_entry(filename)
+            modified_entries = display_options(read_csv_entries(filename))
+            with open(filename, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows([entry.split(',')
+                                 for entry in modified_entries])
+            click.echo("")
+            click.echo("Modified entry")
         case "list":
             month = click.prompt(
                 'Enter the month (name, number)', type=validate_month, default="current")
@@ -159,70 +167,85 @@ def delete_entry(filename: str):
         click.echo(f"Invalid line number: {line_number}")
 
 
-def modify_entry(filename: str):
-    """Modify an entry in the CSV file."""
-    entries = []
-    current_selection = -1
-    date, time, action, customer = [None]*4
+def on_press(key, options):
+    global selected_index, selected_char_index
 
-    def get_user_input(date, time, action, customer):
-        new_date = click.prompt(
-            'Enter the new date (YYYY-MM-DD)', type=str, default=date)
-        new_time = click.prompt(
-            'Enter the new time (HH:MM:SS)', type=str, default=time)
-        new_action = click.prompt(
-            'Enter the new action', type=str, default=action)
-        new_customer = click.prompt(
-            'Enter the new customer', type=str, default=customer)
-        return new_date, new_time, new_action, new_customer
+    if key == keyboard.Key.up:
+        selected_index = (selected_index - 1) % len(options)
+        selected_char_index = min(
+            selected_char_index, len(options[selected_index]) - 1)
+    elif key == keyboard.Key.down:
+        selected_index = (selected_index + 1) % len(options)
+        selected_char_index = min(
+            selected_char_index, len(options[selected_index]) - 1)
+    elif key == keyboard.Key.left:
+        selected_char_index = max(selected_char_index - 1, 0)
+    elif key == keyboard.Key.right:
+        selected_char_index = min(
+            selected_char_index + 1, len(options[selected_index]) - 1)
+    elif key == keyboard.Key.enter:
+        return False
+    elif key == keyboard.Key.backspace:
+        if selected_char_index > 0:
+            options[selected_index] = options[selected_index][:selected_char_index-1] + \
+                options[selected_index][selected_char_index:]
+            selected_char_index -= 1
+    elif key == keyboard.Key.delete:
+        if selected_char_index < len(options[selected_index]):
+            options[selected_index] = options[selected_index][:selected_char_index] + \
+                options[selected_index][selected_char_index+1:]
+    elif hasattr(key, 'char') and key.char is not None:
+        # Handle regular character input
+        # Limit the maximum length of the option
+        if len(options[selected_index]) < 50:
+            options[selected_index] = options[selected_index][:selected_char_index] + \
+                key.char + \
+                options[selected_index][selected_char_index:]
+            selected_char_index += 1
 
-    def main(stdscr):
-        stdscr.clear()
+    return True  # Return True to continue the listener
 
-        with open(filename, 'r', newline='') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                entries.append(row)
 
-        current_selection = 0
+def display_options(entries):
+    global selected_index, selected_char_index, options
 
+    options = entries  # Assign the entries variable to the options variable
+
+    screen = curses.initscr()
+    curses.curs_set(2)  # Set cursor visibility to 2 (visible)
+    height, width = screen.getmaxyx()
+
+    selected_index = 0
+    selected_char_index = 0
+
+    with keyboard.Listener(on_press=lambda key: on_press(key, options)) as listener:
         while True:
-            stdscr.clear()
-
-            for i, row in enumerate(entries):
-                date, time, action, customer = row
-                if i == current_selection:
-                    stdscr.addstr(
-                        i, 0, f"{i+1:>5} | {date:>10} | {time:>8} | {action:>6} | {customer}", curses.A_REVERSE)
+            screen.clear()
+            for i, option in enumerate(options):
+                if i == selected_index:
+                    # Convert the list to a string
+                    screen.addstr(i, 0, ''.join(option))
+                    screen.chgat(i, selected_char_index, 1, curses.A_REVERSE)
+                    screen.move(i, selected_char_index)
                 else:
-                    stdscr.addstr(
-                        i, 0, f"{i+1:>5} | {date:>10} | {time:>8} | {action:>6} | {customer}")
+                    # Convert the list to a string
+                    screen.addstr(i, 0, ''.join(option))
+            screen.refresh()
 
-            key = stdscr.getch()
-
-            if key == curses.KEY_UP and current_selection > 0:
-                current_selection -= 1
-            elif key == curses.KEY_DOWN and current_selection < len(entries) - 1:
-                current_selection += 1
-            elif key == curses.KEY_ENTER or key in [10, 13]:
-                date, time, action, customer = entries[current_selection]
+            key = screen.getch()
+            if key == curses.KEY_ENTER or key in [10, 13]:
                 break
 
-    curses.wrapper(main)
-    click.echo([date, time, action, customer])
-    new_date, new_time, new_action, new_customer = get_user_input(
-        date, time, action, customer)
+    # Clean up the curses screen
+    curses.endwin()
+    listener.stop()
+    return options
 
-    entries[current_selection] = [
-        new_date, new_time, new_action, new_customer]
 
-    if current_selection == None:
-        exit()
-    try:
-        with open(filename, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerows(entries)
-        click.echo("")  # New line
-        click.echo(f"Modified entry at line {current_selection+1}")
-    except:
-        click.echo("Failed to modify entry")
+def read_csv_entries(filename: str) -> list:
+    entries = []
+    if os.path.exists(filename):
+        with open(filename, 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            entries = [','.join(row) for row in reader]
+    return entries
