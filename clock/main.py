@@ -206,10 +206,11 @@ def on_press(key, options):
     return True  # Return True to continue the listener
 
 
-def display_options(entries):
+def display_options(entries: list):
     global selected_index, selected_char_index, options
 
     options = entries  # Assign the entries variable to the options variable
+    options.append("\nUse arrow keys to nevigate through text")
 
     screen = curses.initscr()
     curses.curs_set(2)  # Set cursor visibility to 2 (visible)
@@ -239,7 +240,7 @@ def display_options(entries):
     # Clean up the curses screen
     curses.endwin()
     listener.stop()
-    return options
+    return options[:len(options)-1]
 
 
 def read_csv_entries(filename: str) -> list:
