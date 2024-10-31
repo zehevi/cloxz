@@ -73,7 +73,7 @@ def main(ctx, action: str, text: str):
             click.echo("Modified entry")
         case "list":
             month = click.prompt(
-                'Enter the month (name, number)', type=validate_month, default="current")
+                'Enter the month (name / number)', type=validate_month, default="current")
             list_entries(month)
         case "delete":
             delete_entry(filename)
