@@ -6,6 +6,7 @@ import os
 import pathlib
 from datetime import datetime
 from pynput import keyboard
+from enum import Enum
 
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
@@ -14,13 +15,20 @@ CSV_FILE = f"{datetime.now().strftime('%B')}.csv"
 CSV_FILE_PATH = DATA_DIR / CSV_FILE
 
 ACTIONS = {
-    'in': 'Add a clock-in item',
-    'out': 'Add a clock-out item',
-    'modify': 'Modify an existing entry',
-    'list': 'List all items',
-    'delete': 'Delete an item',
-    'pwd': 'Prints the data directory path'
+    'in': 'Record a clock-in entry',
+    'out': 'Record a clock-out entry',
+    'modify': 'Update an existing entry',
+    'list': 'Display all recorded entries',
+    'delete': 'Remove a specified entry',
+    'pwd': 'Display the path to the data directory',
+    'check': 'Verify the clocking status for the current day'
 }
+
+
+class ClockStatus(Enum):
+    NONE = 0
+    IN = 1
+    OUT = 2
 
 
 def create_directories():
@@ -77,6 +85,15 @@ def main(ctx, action: str, text: str):
             list_entries(month)
         case "delete":
             delete_entry(filename)
+        case "check":
+            date = datetime.now().strftime("%Y-%m-%d")
+            match find_status_by_date(date, filename):
+                case ClockStatus.NONE:
+                    print("No clocking status entry found for today")
+                case ClockStatus.IN:
+                    print("Found a clock-in entry for today")
+                case ClockStatus.OUT:
+                    print("found clock-out entry for today")
 
 
 def create_file():
@@ -243,10 +260,35 @@ def display_options(entries: list):
     return options[:len(options)-1]
 
 
+def find_status_by_date(date: str, filename: str) -> ClockStatus:
+    entries = _read_csv_to_list(filename)
+    status = ClockStatus.NONE
+
+    for row in entries:
+        if row[0] == date:
+            if row[2] == 'out':
+                status = ClockStatus.OUT
+            elif row[2] == 'in' and status != ClockStatus.OUT:
+                status = ClockStatus.IN
+    return status
+
+
 def read_csv_entries(filename: str) -> list:
     entries = []
     if os.path.exists(filename):
         with open(filename, 'r', newline='') as csvfile:
             reader = csv.reader(csvfile)
             entries = [','.join(row) for row in reader]
+    return entries
+
+
+def _read_csv_to_list(filename: str) -> list:
+    entries = []
+    if os.path.exists(filename):
+        with open(filename, 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                entries.append(row)  # Append each row as a list
+    else:
+        print(f"File {filename} does not exist.")
     return entries
