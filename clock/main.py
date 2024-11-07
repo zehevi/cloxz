@@ -3,6 +3,7 @@ import calendar
 import click
 import csv
 import os
+import sys
 import pathlib
 from datetime import datetime
 from pynput import keyboard
@@ -133,6 +134,7 @@ def list_entries(month: int):
                 if datetime.strptime(date, '%Y-%m-%d').month == month:
                     click.echo(click.style(
                         f"{date:>10} | {time:>8} | {action:>6} | {customer}", fg='white'))
+            sys.stdout.flush()
 
 
 def validate_month(month: str) -> int:
