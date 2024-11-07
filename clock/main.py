@@ -21,7 +21,7 @@ ACTIONS = {
     'list': 'Display all recorded entries',
     'delete': 'Remove a specified entry',
     'pwd': 'Display the path to the data directory',
-    'check': 'Verify the clocking status for the current day'
+    'status': 'Verify the clocking status for the current day'
 }
 
 
@@ -85,11 +85,11 @@ def main(ctx, action: str, text: str):
             list_entries(month)
         case "delete":
             delete_entry(filename)
-        case "check":
+        case "status":
             date = datetime.now().strftime("%Y-%m-%d")
             match find_status_by_date(date, filename):
                 case ClockStatus.NONE:
-                    print("No clocking status entry found for today")
+                    print("No clocking entry found for today")
                 case ClockStatus.IN:
                     print("Found a clock-in entry for today")
                 case ClockStatus.OUT:
