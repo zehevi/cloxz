@@ -45,8 +45,8 @@ def clock_out(customer: str = typer.Argument(None)):
     add_clock_entry(CSV_FILE_PATH, customer, "out")
 
 
-@app.command(name="list")
-def clock_list(month: str = typer.Option("current", prompt=True)):
+@app.command(name="show")
+def clock_show(month: str = typer.Option("current", prompt=True)):
     month = validate_month(month)
     list_entries(month)
 
