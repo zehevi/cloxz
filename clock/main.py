@@ -1,12 +1,15 @@
-import calendar
 import csv
 import os
 import pathlib
 import typer
+import typer.completion
 from datetime import datetime
 from enum import Enum
-from .utils import add_clock_entry, create_directories, create_file, validate_month
 from rich import print
+from rich.table import Table
+from typing import Annotated, Optional
+from .utils import add_clock_entry, create_directories, create_file, validate_month
+
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
 DATA_DIR = CONFIG_DIR / "data"
@@ -20,9 +23,11 @@ class ClockStatus(Enum):
     OUT = 2
 
 
-app = typer.Typer(name="cloxz-cli")
+app = typer.Typer(name="cxz")
 config_app = typer.Typer(name="config")
 app.add_typer(config_app)
+
+# typer.completion.completion_init()
 
 
 def main():
@@ -50,7 +55,7 @@ def clock_out(customer: str = typer.Argument(None)):
 @app.command(name="show")
 def clock_show(month: str = typer.Option("current", prompt=True)):
     month = validate_month(month)
-    list_entries(month)
+    list_entries()
 
 
 @config_app.command('dir')
@@ -80,36 +85,33 @@ def status():
             print("found clock-out entry for today")
 
 
-def list_entries(month: int, print_line_num: bool = False):
+def list_entries(print_line_num: bool = False):
     filename = CSV_FILE_PATH
     if os.path.exists(filename):
-        with open(filename, 'r', newline='') as csvfile:
-            reader = csv.reader(csvfile)
-            print(f"Entries for {calendar.month_name[month]}:")
-            print("Line | " if print_line_num else "",
-                  "Date | Time | Action | Customer")
-            for i, row in enumerate(reader, start=1):
-                date, time, action, customer = row
-
-                col, col_end = '[grey]', '[/grey]'
-                match action:
-                    case 'in':
-                        col, col_end = '[green]', '[/green]'
-                    case 'out':
-                        col, col_end = '[red]', '[/red]'
-
-                if datetime.strptime(date, '%Y-%m-%d').month == month:
-                    if print_line_num:
-                        print(
-                            f"{i:>5} | {date:>10} | {time:>8} | {col}{action:>6}{col_end} | {customer}")
-                    else:
-                        print(
-                            f"{date:>10} | {time:>8} | {col}{action:>6}{col_end} | {customer}")
+        headers = (['Line'] if print_line_num else [])
+        headers += ['Date', 'Time', 'Action', 'Customer']
+        table = Table()
+        # prev_date = None
+        for c in headers:
+            table.add_column(c)
+        for row in _read_csv_to_list(filename):
+            date, time, action, customer = row
+            # FIXME: requires newer version of rich
+            # if prev_date != None and date != prev_date:
+            #     table.add_section()
+            prev_date = date
+            match action:
+                case 'in':
+                    col, col_end = '[green]', '[/green]'
+                case 'out':
+                    col, col_end = '[red]', '[/red]'
+            table.add_row(date, time, f"{col}{action}{col_end}", customer)
+        print(table)
 
 
 def delete_entry(filename: str):
     """Delete an entry from the CSV file."""
-    list_entries(validate_month('current'), True)
+    list_entries(True)
 
     entries = []
 
@@ -121,20 +123,18 @@ def delete_entry(filename: str):
     line_number = typer.prompt(
         '\nEnter the line number of the entry you want to delete', type=int)
 
-    if typer.confirm("Are you sure you want to delete?", default=False):
-        if 1 <= line_number <= len(entries):
-            del entries[line_number - 1]
-            try:
-                with open(filename, 'w', newline='') as csvfile:
-                    writer = csv.writer(csvfile)
-                    writer.writerows(entries)
-                print(f"Deleted entry at line {line_number}")
-            except:
-                print("Failed to delete entry")
-        else:
-            print(f"Invalid line number: {line_number}")
+    typer.confirm("Are you sure you want to delete?", abort=True)
+    if 1 <= line_number <= len(entries):
+        del entries[line_number - 1]
+        try:
+            with open(filename, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(entries)
+            print(f"Deleted entry at line {line_number}")
+        except:
+            print("Failed to delete entry")
     else:
-        print("[yellow]Canceled[/yellow]")
+        print(f"Invalid line number: {line_number}")
 
 
 def find_status_by_date(date: str, filename: str) -> ClockStatus:
@@ -160,3 +160,21 @@ def _read_csv_to_list(filename: str) -> list:
     else:
         print(f"File {filename} does not exist.")
     return entries
+
+
+@app.command()
+def completion(shell: Annotated[str, typer.Option(help="BASH ZSH FISH POWERSHELL", default="zsh")] = "zsh", install: bool = False):
+    """
+    Generate the completion script for the specified shell.
+    """
+    if install:
+        typer.echo(f"Installing completion script for {shell}")
+        typer.completion.install(
+            shell=shell, prog_name=app.info.name, complete_var='_TYPER_COMPLETE')
+    else:
+        print(typer.completion.get_completion_script(
+            prog_name=app.info.name, shell=shell, complete_var='_TYPER_COMPLETE'))
+
+
+if __name__ == "__main__":
+    app()
