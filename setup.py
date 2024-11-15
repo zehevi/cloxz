@@ -1,16 +1,15 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='clockz-cli',
+    name='cloxz-cli',
     version='0.3.2',
     packages=find_packages(),
     install_requires=[
-        'click',
-        'pynput'
+        'typer'
     ],
     entry_points={
         'console_scripts': [
-            'clock=clock.main:main',
+            'cxz=clock.main:main',
         ],
     },
     long_description=open('README.md').read(),
