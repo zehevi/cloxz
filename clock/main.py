@@ -21,6 +21,8 @@ class ClockStatus(Enum):
 
 
 app = typer.Typer(name="cloxz-cli")
+config_app = typer.Typer(name="config")
+app.add_typer(config_app)
 
 
 def main():
@@ -51,9 +53,14 @@ def clock_show(month: str = typer.Option("current", prompt=True)):
     list_entries(month)
 
 
-@app.command()
-def pwd():
+@config_app.command('dir')
+def config_dir_command():
     print(DATA_DIR)
+
+
+@config_app.command('file')
+def config_file_command():
+    print(CSV_FILE_PATH)
 
 
 @app.command()
