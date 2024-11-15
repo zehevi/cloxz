@@ -5,23 +5,13 @@ import pathlib
 import typer
 from datetime import datetime
 from enum import Enum
-from .utils import add_clock_entry
+from .utils import add_clock_entry, create_directories, create_file, validate_month
 from rich import print
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
 DATA_DIR = CONFIG_DIR / "data"
 CSV_FILE = f"{datetime.now().strftime('%B')}.csv"
 CSV_FILE_PATH = DATA_DIR / CSV_FILE
-
-ACTIONS = {
-    'in': 'Record a clock-in entry',
-    'out': 'Record a clock-out entry',
-    'modify': 'Update an existing entry',
-    'list': 'Display all recorded entries',
-    'delete': 'Remove a specified entry',
-    'pwd': 'Display the path to the data directory',
-    'status': 'Verify the clocking status for the current day'
-}
 
 
 class ClockStatus(Enum):
@@ -33,24 +23,11 @@ class ClockStatus(Enum):
 app = typer.Typer(name="cloxz-cli")
 
 
-def create_directories():
-    """Create the necessary directories if they don't exist."""
-    if not os.path.exists(CONFIG_DIR):
-        os.makedirs(CONFIG_DIR)
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-
-
-def print_csv_directory():
-    """Print the CSV file directory path."""
-    print(DATA_DIR)
-
-
 def main():
-    create_directories()
+    create_directories(CONFIG_DIR, DATA_DIR)
     filename = CSV_FILE_PATH
     if not os.path.exists(filename):
-        create_file()
+        create_file(CSV_FILE_PATH)
     app()
 
 
@@ -76,7 +53,7 @@ def clock_list(month: str = typer.Option("current", prompt=True)):
 
 @app.command()
 def pwd():
-    print_csv_directory()
+    print(DATA_DIR)
 
 
 @app.command()
@@ -94,20 +71,6 @@ def status():
             print("Found a clock-in entry for today")
         case ClockStatus.OUT:
             print("found clock-out entry for today")
-
-
-def create_file():
-    filename = CSV_FILE_PATH
-    if not os.path.exists(filename):
-        try:
-            with open(filename, 'w+'):
-                pass
-        except:
-            print("Failed to create clock file")
-            return
-        print(f"Created {filename}")
-    else:
-        print(f"{filename} already exists.")
 
 
 def list_entries(month: int, print_line_num: bool = False):
@@ -135,25 +98,6 @@ def list_entries(month: int, print_line_num: bool = False):
                     else:
                         print(
                             f"{date:>10} | {time:>8} | {col}{action:>6}{col_end} | {customer}")
-
-
-def validate_month(month: str) -> int:
-    if month.lower() == 'current':
-        return datetime.now().month
-    try:
-        month_num = int(month)
-        if 1 <= month_num <= 12:
-            return month_num
-        else:
-            print(f"Invalid month number: {month}")
-            raise typer.Exit(code=1)
-    except ValueError:
-        month_num = list(calendar.month_name).index(month.capitalize())
-        if month_num > 0:
-            return month_num
-        else:
-            print(f"Invalid month name: {month}")
-            raise typer.Exit(code=1)
 
 
 def delete_entry(filename: str):
@@ -186,82 +130,6 @@ def delete_entry(filename: str):
         print("[yellow]Canceled[/yellow]")
 
 
-# def on_press(key, options):
-#     global selected_index, selected_char_index
-
-#     if key == keyboard.Key.up:
-#         selected_index = (selected_index - 1) % len(options)
-#         selected_char_index = min(
-#             selected_char_index, len(options[selected_index]) - 1)
-#     elif key == keyboard.Key.down:
-#         selected_index = (selected_index + 1) % len(options)
-#         selected_char_index = min(
-#             selected_char_index, len(options[selected_index]) - 1)
-#     elif key == keyboard.Key.left:
-#         selected_char_index = max(selected_char_index - 1, 0)
-#     elif key == keyboard.Key.right:
-#         selected_char_index = min(
-#             selected_char_index + 1, len(options[selected_index]) - 1)
-#     elif key == keyboard.Key.enter:
-#         return False
-#     elif key == keyboard.Key.backspace:
-#         if selected_char_index > 0:
-#             options[selected_index] = options[selected_index][:selected_char_index-1] + \
-#                 options[selected_index][selected_char_index:]
-#             selected_char_index -= 1
-#     elif key == keyboard.Key.delete:
-#         if selected_char_index < len(options[selected_index]):
-#             options[selected_index] = options[selected_index][:selected_char_index] + \
-#                 options[selected_index][selected_char_index+1:]
-#     elif hasattr(key, 'char') and key.char is not None:
-#         # Handle regular character input
-#         # Limit the maximum length of the option
-#         if len(options[selected_index]) < 50:
-#             options[selected_index] = options[selected_index][:selected_char_index] + \
-#                 key.char + \
-#                 options[selected_index][selected_char_index:]
-#             selected_char_index += 1
-
-#     return True  # Return True to continue the listener
-
-
-# def display_options(entries: list):
-#     global selected_index, selected_char_index, options
-
-#     options = entries  # Assign the entries variable to the options variable
-#     options.append("\nUse arrow keys to nevigate through text")
-
-#     screen = curses.initscr()
-#     curses.curs_set(2)  # Set cursor visibility to 2 (visible)
-#     height, width = screen.getmaxyx()
-
-#     selected_index = 0
-#     selected_char_index = 0
-
-#     with keyboard.Listener(on_press=lambda key: on_press(key, options)) as listener:
-#         while True:
-#             screen.clear()
-#             for i, option in enumerate(options):
-#                 if i == selected_index:
-#                     # Convert the list to a string
-#                     screen.addstr(i, 0, ''.join(option))
-#                     screen.chgat(i, selected_char_index, 1, curses.A_REVERSE)
-#                     screen.move(i, selected_char_index)
-#                 else:
-#                     # Convert the list to a string
-#                     screen.addstr(i, 0, ''.join(option))
-#             screen.refresh()
-
-#             key = screen.getch()
-#             if key == curses.KEY_ENTER or key in [10, 13]:
-#                 break
-
-#     # Clean up the curses screen
-#     curses.endwin()
-#     listener.stop()
-#     return options[:len(options)-1]
-
-
 def find_status_by_date(date: str, filename: str) -> ClockStatus:
     entries = _read_csv_to_list(filename)
     status = ClockStatus.NONE
@@ -273,15 +141,6 @@ def find_status_by_date(date: str, filename: str) -> ClockStatus:
             elif row[2] == 'in' and status != ClockStatus.OUT:
                 status = ClockStatus.IN
     return status
-
-
-# def read_csv_entries(filename: str) -> list:
-#     entries = []
-#     if os.path.exists(filename):
-#         with open(filename, 'r', newline='') as csvfile:
-#             reader = csv.reader(csvfile)
-#             entries = [','.join(row) for row in reader]
-#     return entries
 
 
 def _read_csv_to_list(filename: str) -> list:
