@@ -62,7 +62,9 @@ def clock_in(customer: str = typer.Argument(None)):
 
 
 @app.command(name="out")
-def clock_out(customer: str = typer.Option(default="", prompt=True)):
+def clock_out(customer: str = typer.Argument(None)):
+    if customer is None:
+        customer = typer.prompt("Customer")
     add_clock_entry(CSV_FILE_PATH, customer, "out")
 
 
@@ -108,17 +110,31 @@ def create_file():
         print(f"{filename} already exists.")
 
 
-def list_entries(month: int):
+def list_entries(month: int, print_line_num: bool = False):
     filename = CSV_FILE_PATH
     if os.path.exists(filename):
         with open(filename, 'r', newline='') as csvfile:
             reader = csv.reader(csvfile)
             print(f"Entries for {calendar.month_name[month]}:")
-            print("Date | Time | Action | Customer")
-            for row in reader:
+            print("Line | " if print_line_num else "",
+                  "Date | Time | Action | Customer")
+            for i, row in enumerate(reader, start=1):
                 date, time, action, customer = row
+
+                col, col_end = '[grey]', '[/grey]'
+                match action:
+                    case 'in':
+                        col, col_end = '[green]', '[/green]'
+                    case 'out':
+                        col, col_end = '[red]', '[/red]'
+
                 if datetime.strptime(date, '%Y-%m-%d').month == month:
-                    print(f"{date:>10} | {time:>8} | {action:>6} | {customer}")
+                    if print_line_num:
+                        print(
+                            f"{i:>5} | {date:>10} | {time:>8} | {col}{action:>6}{col_end} | {customer}")
+                    else:
+                        print(
+                            f"{date:>10} | {time:>8} | {col}{action:>6}{col_end} | {customer}")
 
 
 def validate_month(month: str) -> int:
@@ -142,22 +158,13 @@ def validate_month(month: str) -> int:
 
 def delete_entry(filename: str):
     """Delete an entry from the CSV file."""
+    list_entries(validate_month('current'), True)
+
     entries = []
 
     with open(filename, 'r', newline='') as csvfile:
         reader = csv.reader(csvfile)
-        print("Entries:")
-        print("Line | Date | Time | Action | Customer")
         for i, row in enumerate(reader, start=1):
-            date, time, action, customer = row
-            col, col_end = '[grey]', '[/grey]'
-            match action:
-                case 'in':
-                    col, col_end = '[green]', '[/green]'
-                case 'out':
-                    col, col_end = '[red]', '[/red]'
-            print(
-                f"{i:>5} | {date:>10} | {time:>8} | {col}{action:>6}{col_end} | {customer}")
             entries.append(row)
 
     line_number = typer.prompt(
