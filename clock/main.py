@@ -38,6 +38,7 @@ def main():
     app()
 
 
+# TODO: Support time and date input / picker
 @app.command(name="in")
 def clock_in(customer: str = typer.Argument(None)):
     if customer is None:
@@ -45,6 +46,7 @@ def clock_in(customer: str = typer.Argument(None)):
     add_clock_entry(CSV_FILE_PATH, customer, "in")
 
 
+# TODO: Support time and date input / picker
 @app.command(name="out")
 def clock_out(customer: str = typer.Argument(None)):
     if customer is None:
@@ -52,6 +54,7 @@ def clock_out(customer: str = typer.Argument(None)):
     add_clock_entry(CSV_FILE_PATH, customer, "out")
 
 
+# FIXME: Supplying a month doesn't do anything
 @app.command(name="show")
 def clock_show(month: str = typer.Option("current", prompt=True)):
     month = validate_month(month)
@@ -60,11 +63,17 @@ def clock_show(month: str = typer.Option("current", prompt=True)):
 
 @config_app.command('dir')
 def config_dir_command():
+    """
+    Print the DATA directory path.
+    """
     print(DATA_DIR)
 
 
 @config_app.command('file')
 def config_file_command():
+    """
+    Print the path to the CSV file currently active.
+    """
     print(CSV_FILE_PATH)
 
 
@@ -162,7 +171,7 @@ def _read_csv_to_list(filename: str) -> list:
     return entries
 
 
-@app.command()
+@config_app.command()
 def completion(shell: Annotated[str, typer.Option(help="BASH ZSH FISH POWERSHELL", default="zsh")] = "zsh", install: bool = False):
     """
     Generate the completion script for the specified shell.
