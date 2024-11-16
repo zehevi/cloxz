@@ -2,6 +2,7 @@ import sqlite3
 import logging
 
 LOGGER = logging.Logger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 
 class Database:
@@ -69,8 +70,6 @@ class Database:
                 f"Database '{self.database_file}' created successfully.")
         except sqlite3.Error as e:
             LOGGER.error("Error creating the database:", e)
-        finally:
-            self.close_connection()
 
     def create_table(self, table_name, columns):
         try:
@@ -81,5 +80,3 @@ class Database:
             LOGGER.info(f"Table '{table_name}' created successfully.")
         except sqlite3.Error as e:
             LOGGER.error("Error creating the table:", e)
-        finally:
-            self.close_connection()
