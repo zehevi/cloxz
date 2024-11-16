@@ -7,7 +7,8 @@ from datetime import datetime
 from enum import Enum
 from rich import print
 from rich.table import Table
-from typing import Annotated, Optional
+from typing import Annotated
+from .local_db import LocalDatabase
 from .utils import add_clock_entry, create_directories, create_file, validate_month
 
 
@@ -75,6 +76,22 @@ def config_file_command():
     Print the path to the CSV file currently active.
     """
     print(CSV_FILE_PATH)
+
+
+@config_app.command("create-db")
+def create_db():
+    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
+        db.create_database()
+
+
+@config_app.command('create-table')
+def create_db_table(month: str, year: str):
+    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
+        db.create_table(
+            table_name=f"data_{year}_{month}",
+            columns=["id INTEGER PRIMARY KEY",
+                     "timestamp TEXT", "action TEXT", "customer TEXT"]
+        )
 
 
 @app.command()
