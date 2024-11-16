@@ -1,7 +1,7 @@
 import sqlite3
 import logging
 
-LOGGER = logging.Logger()
+LOGGER = logging.Logger(__name__)
 
 
 class Database:
