@@ -116,3 +116,15 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.error(f"Error reading rows from table '{table_name}': {e}")
             return None
+
+    def get_all_tables(self) -> list:
+        try:
+            self.connect()
+            query = "SELECT name FROM sqlite_master WHERE type='table';"
+            self.cursor.execute(query)
+            rows = self.cursor.fetchall()
+            LOGGER.info(f'Read {len(rows)} tables from database')
+            return rows
+        except sqlite3.Error as e:
+            LOGGER.error(f"Error reading from sqlite_master", e)
+            return []
