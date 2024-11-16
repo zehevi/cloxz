@@ -2,7 +2,7 @@ import sqlite3
 import logging
 
 LOGGER = logging.Logger(__name__)
-LOGGER.setLevel(logging.INFO)
+LOGGER.setLevel(logging.CRITICAL)
 
 
 class Database:
