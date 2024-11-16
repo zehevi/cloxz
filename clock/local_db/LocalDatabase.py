@@ -71,12 +71,48 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.error("Error creating the database:", e)
 
-    def create_table(self, table_name, columns):
+    def create_table(self, table_name, columns) -> bool:
         try:
             self.connect()
             query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns)})"
             self.cursor.execute(query)
             self.conn.commit()
             LOGGER.info(f"Table '{table_name}' created successfully.")
+            return True
         except sqlite3.Error as e:
             LOGGER.error("Error creating the table:", e)
+            return False
+
+    def delete_table(self, table_name) -> bool:
+        try:
+            self.connect()
+            query = f"DROP TABLE {table_name}"
+            self.cursor.execute(query)
+            self.conn.commit()
+            LOGGER.info(f"Table [{table_name}] dropped")
+            return True
+        except sqlite3.Error as e:
+            LOGGER.error("Error dropping the table:", e)
+            return False
+
+    def insert_row(self, table_name, data) -> None:
+        try:
+            self.connect()
+            query = f"INSERT INTO {table_name} VALUES ({','.join(['?'] * len(data))})"
+            self.cursor.execute(query, data)
+            self.conn.commit()
+            LOGGER.info(f"Row inserted into table '{table_name}'")
+        except sqlite3.Error as e:
+            LOGGER.error(f"Error inserting row into table '{table_name}': {e}")
+
+    def read_all_rows(self, table_name) -> list | None:
+        try:
+            self.connect()
+            query = f"SELECT * FROM {table_name}"
+            self.cursor.execute(query)
+            rows = self.cursor.fetchall()
+            LOGGER.info(f"Read {len(rows)} rows from table '{table_name}'")
+            return rows
+        except sqlite3.Error as e:
+            LOGGER.error(f"Error reading rows from table '{table_name}': {e}")
+            return None
