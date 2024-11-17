@@ -221,7 +221,7 @@ def find_status_by_date(date: str) -> ClockStatus:
 
 
 @config_app.command()
-def completion(shell: Annotated[str, typer.Option(help="BASH ZSH FISH POWERSHELL", default="zsh")] = "zsh", install: bool = False):
+def completion(shell: Annotated[str, typer.Option(help="BASH ZSH FISH POWERSHELL")] = "zsh", install: bool = False):
     """
     Generate the completion script for the specified shell.
     """
