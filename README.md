@@ -1,7 +1,7 @@
 Installation
 
 ```shell
-pip install cloxz-cli
+pip install cloxz
 ```
 
 Test the installation
