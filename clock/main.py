@@ -45,30 +45,14 @@ def main():
 @app.command(name='in')
 def clock_in(customer: str = typer.Argument(None)):
     """Clock in for the day with an optional customer name."""
-    if customer is None:
-        customer = typer.prompt("Customer")
-    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        db.insert_row(DEFAULT_TABLE_NAME, (
-            str(datetime.now().strftime("%Y-%m-%d")),
-            str(datetime.now().strftime('%H:%M')),
-            'in',
-            customer
-        ))
+    clocking(customer, 'in')
 
 
 # TODO: Support time and date input / picker
 @app.command(name='out')
 def clock_out(customer: str = typer.Argument(None)):
     """Clock out for the day with an optional customer name."""
-    if customer is None:
-        customer = typer.prompt("Customer")
-    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        db.insert_row(DEFAULT_TABLE_NAME, (
-            str(datetime.now().strftime("%Y-%m-%d")),
-            str(datetime.now().strftime('%H:%M')),
-            'out',
-            customer
-        ))
+    clocking(customer, 'out')
 
 
 @app.command(name="show")
@@ -144,6 +128,18 @@ def drop_table(month: str, year: str):
             print(f'[green]Table {table_name} dropped[/green]')
         else:
             print(f'[red]Could not drop table [{table_name}][/red]')
+
+
+def clocking(customer: str, action: str):
+    if customer is None:
+        customer = typer.prompt("Customer")
+    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
+        db.insert_row(DEFAULT_TABLE_NAME, (
+            str(datetime.now().strftime("%Y-%m-%d")),
+            str(datetime.now().strftime('%H:%M')),
+            action,
+            customer
+        ))
 
 
 def get_rows(print_line_num: bool = False):
