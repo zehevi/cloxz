@@ -4,7 +4,6 @@ import tempfile
 import typer
 import typer.completion
 from datetime import datetime
-from enum import Enum
 from rich import print
 from rich.table import Table
 from typing import Annotated
