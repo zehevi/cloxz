@@ -117,7 +117,7 @@ def drop_table(month: str, year: str):
 @app.command()
 def delete():
     """Delete a specific clock-in/clock-out record."""
-    get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME, True)
+    print(get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME, True))
 
     entries = []
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
