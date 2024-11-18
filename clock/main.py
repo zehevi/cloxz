@@ -9,7 +9,8 @@ from rich import print
 from rich.table import Table
 from typing import Annotated
 from .local_db import LocalDatabase
-from .utils import create_directories, create_file, validate_month
+from .utils import (add_entry, ClockStatus, create_directories, create_file,
+                    find_status_by_date, get_rows, validate_month)
 
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
@@ -17,12 +18,6 @@ DATA_DIR = CONFIG_DIR / "data"
 CSV_FILE = f"{datetime.now().strftime('%B')}.csv"
 CSV_FILE_PATH = DATA_DIR / CSV_FILE
 DEFAULT_TABLE_NAME = f'data_{datetime.now().strftime("%Y")}_{datetime.now().strftime("%m")}'
-
-
-class ClockStatus(Enum):
-    NONE = 0
-    IN = 1
-    OUT = 2
 
 
 app = typer.Typer(name="cxz")
@@ -45,14 +40,14 @@ def main():
 @app.command(name='in')
 def clock_in(customer: str = typer.Argument(None)):
     """Clock in for the day."""
-    add_entry(customer, 'in')
+    add_entry(customer, 'in', CONFIG_DIR, DEFAULT_TABLE_NAME)
 
 
 # TODO: Support time and date input / picker
 @app.command(name='out')
 def clock_out(customer: str = typer.Argument(None)):
     """Clock out for the day."""
-    add_entry(customer, 'out')
+    add_entry(customer, 'out', CONFIG_DIR, DEFAULT_TABLE_NAME)
 
 
 @app.command(name="show")
@@ -62,7 +57,7 @@ def clock_show(
 ):
     """Display clock-in/clock-out records."""
     month = validate_month(month)
-    get_rows()
+    print(get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME))
 
 
 @config_app.command('dir')
@@ -122,45 +117,10 @@ def drop_table(month: str, year: str):
             print(f'[red]Could not drop table [{table_name}][/red]')
 
 
-def add_entry(customer: str, action: str):
-    if customer is None:
-        customer = typer.prompt("Customer")
-    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        db.insert_row(DEFAULT_TABLE_NAME, (
-            str(datetime.now().strftime("%Y-%m-%d")),
-            str(datetime.now().strftime('%H:%M')),
-            action,
-            customer
-        ))
-
-
-def get_rows(print_line_num: bool = False):
-    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        table = Table()
-        if print_line_num:
-            table.add_column('')
-        table.add_column('Date')
-        table.add_column('Time')
-        table.add_column('Action')
-        table.add_column('Customer')
-        for i, row in enumerate(db.read_all_rows(DEFAULT_TABLE_NAME), start=1):
-            id_, timestamp, action, customer = row
-            match action:
-                case 'in':
-                    action = '[green]in[/green]'
-                case 'out':
-                    action = '[red]out[/red]'
-            if print_line_num:
-                table.add_row(str(i), str(id_), timestamp, action, customer)
-            else:
-                table.add_row(str(id_), timestamp, action, customer)
-        print(table)
-
-
 @app.command()
 def delete():
     """Delete a specific clock-in/clock-out record."""
-    get_rows(True)
+    get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME, True)
 
     entries = []
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
@@ -185,28 +145,13 @@ def delete():
 def status():
     """Display the clock-in/out status for today."""
     date = datetime.now().strftime("%Y-%m-%d")
-    match find_status_by_date(date):
+    match find_status_by_date(date, CONFIG_DIR, DEFAULT_TABLE_NAME):
         case ClockStatus.NONE:
             print("No clocking entry found for today")
         case ClockStatus.IN:
             print("Found a clock-in entry for today")
         case ClockStatus.OUT:
             print("found clock-out entry for today")
-
-
-def find_status_by_date(date: str) -> ClockStatus:
-    with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        entries = db.read_all_rows(DEFAULT_TABLE_NAME)
-
-    status = ClockStatus.NONE
-
-    for row in entries:
-        if row[0] == date:
-            if row[2] == 'out':
-                status = ClockStatus.OUT
-            elif row[2] == 'in' and status != ClockStatus.OUT:
-                status = ClockStatus.IN
-    return status
 
 
 @app.command('edit')
