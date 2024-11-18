@@ -24,8 +24,6 @@ app = typer.Typer(name="cxz")
 config_app = typer.Typer(name="config", help="Configuration reletad commands.")
 app.add_typer(config_app)
 
-# typer.completion.completion_init()
-
 
 def main():
     create_directories(CONFIG_DIR, DATA_DIR)
