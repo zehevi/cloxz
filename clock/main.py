@@ -73,14 +73,6 @@ def config_dir_command():
     print(DATA_DIR)
 
 
-@config_app.command('file')
-def config_file_command():
-    """
-    Print the path to the CSV file currently active.
-    """
-    print(CSV_FILE_PATH)
-
-
 @config_app.command("show-tables")
 def show_tables():
     """
