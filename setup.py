@@ -5,7 +5,8 @@ setup(
     version='0.4.0',
     packages=find_packages(),
     install_requires=[
-        'typer'
+        'typer',
+        'rich'
     ],
     entry_points={
         'console_scripts': [
