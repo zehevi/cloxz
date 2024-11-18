@@ -220,20 +220,6 @@ def find_status_by_date(date: str) -> ClockStatus:
     return status
 
 
-@config_app.command()
-def completion(shell: Annotated[str, typer.Option(help="BASH ZSH FISH POWERSHELL")] = "zsh", install: bool = False):
-    """
-    Generate the completion script for the specified shell.
-    """
-    if install:
-        typer.echo(f"Installing completion script for {shell}")
-        typer.completion.install(
-            shell=shell, prog_name=app.info.name, complete_var='_TYPER_COMPLETE')
-    else:
-        print(typer.completion.get_completion_script(
-            prog_name=app.info.name, shell=shell, complete_var='_TYPER_COMPLETE'))
-
-
 @app.command('edit')
 def edit_table(
     month: Annotated[str, typer.Option(..., prompt=True)] = str(
@@ -245,18 +231,14 @@ def edit_table(
     table_name = f"data_{year}_{month}"
 
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        # Create a temporary file to hold the table data
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            # Read the table data and write it to the temporary file
             reader = db.read_all_rows(table_name)
             for row in reader:
                 temp_file.write("\t".join(row) + "\n")
 
-        # Open the temporary file in the user's preferred text editor
         editor = os.environ.get("EDITOR", "nano")
         os.system(f"{editor} {temp_file.name}")
 
-        # Read the updated data from the temporary file and update the database
         with open(temp_file.name, "r") as updated_file:
             updated_rows = [line.strip().split("\t")
                             for line in updated_file.readlines()]
