@@ -4,7 +4,7 @@ Installation
 pip install cloxz-cli
 ```
 
-Test whether it works
+Test the installation
 
 ```shell
 cxz --help
