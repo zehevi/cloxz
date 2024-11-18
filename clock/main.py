@@ -26,7 +26,7 @@ class ClockStatus(Enum):
 
 
 app = typer.Typer(name="cxz")
-config_app = typer.Typer(name="config")
+config_app = typer.Typer(name="config", help="Configuration reletad commands.")
 app.add_typer(config_app)
 
 # typer.completion.completion_init()
@@ -44,15 +44,15 @@ def main():
 # TODO: Support time and date input / picker
 @app.command(name='in')
 def clock_in(customer: str = typer.Argument(None)):
-    """Clock in for the day with an optional customer name."""
-    clocking(customer, 'in')
+    """Clock in for the day."""
+    add_entry(customer, 'in')
 
 
 # TODO: Support time and date input / picker
 @app.command(name='out')
 def clock_out(customer: str = typer.Argument(None)):
-    """Clock out for the day with an optional customer name."""
-    clocking(customer, 'out')
+    """Clock out for the day."""
+    add_entry(customer, 'out')
 
 
 @app.command(name="show")
@@ -60,7 +60,7 @@ def clock_show(
     month: str = typer.Option(str(datetime.now().strftime('%m'))),
     year: str = typer.Option(str(datetime.now().strftime('%Y')))
 ):
-    """Display clock-in/clock-out records for a specific month and year."""
+    """Display clock-in/clock-out records."""
     month = validate_month(month)
     get_rows()
 
@@ -108,7 +108,7 @@ def create_db_table(
     year: Annotated[str, typer.Option(..., prompt=True)] = str(
         datetime.now().strftime("%Y"))
 ):
-    """Create a new database table for the specified month and year."""
+    """Create a new database table."""
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
         if not db.create_table(
             table_name=f"data_{year}_{month}",
@@ -119,7 +119,7 @@ def create_db_table(
 
 @config_app.command()
 def drop_table(month: str, year: str):
-    """Delete all clock-in/clock-out records for a specific month and year."""
+    """Erase all months' records."""
     table_name = f"data_{year}_{month}"
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
         typer.confirm(
@@ -130,7 +130,7 @@ def drop_table(month: str, year: str):
             print(f'[red]Could not drop table [{table_name}][/red]')
 
 
-def clocking(customer: str, action: str):
+def add_entry(customer: str, action: str):
     if customer is None:
         customer = typer.prompt("Customer")
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
@@ -191,6 +191,7 @@ def delete():
 
 @app.command()
 def status():
+    """Display the clock-in/out status for today."""
     date = datetime.now().strftime("%Y-%m-%d")
     match find_status_by_date(date):
         case ClockStatus.NONE:
@@ -223,7 +224,7 @@ def edit_table(
     year: Annotated[str, typer.Option(..., prompt=True)] = str(
         datetime.now().strftime("%Y"))
 ):
-    """Edit the database table for the specified month and year."""
+    """Edit a database's table."""
     table_name = f"data_{year}_{month}"
 
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
