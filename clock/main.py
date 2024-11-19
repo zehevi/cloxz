@@ -47,6 +47,12 @@ def clock_out(customer: str = typer.Argument(None)):
     add_entry(customer, 'out', CONFIG_DIR, DEFAULT_TABLE_NAME)
 
 
+@app.command(name='task')
+def clock_task(customer: str = typer.Argument(None)):
+    """Mark a task in the timetable."""
+    add_entry(customer, 'task', CONFIG_DIR, DEFAULT_TABLE_NAME)
+
+
 @app.command(name="show")
 def clock_show(
     month: str = typer.Option(str(datetime.now().strftime('%m'))),

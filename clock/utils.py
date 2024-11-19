@@ -81,6 +81,8 @@ def get_rows(config_dir: str, table_name: str, print_line_num: bool = False):
                     action = '[green]in[/green]'
                 case 'out':
                     action = '[red]out[/red]'
+                case 'task':
+                    action = '[blue]task[/blue]'
             if print_line_num:
                 table.add_row(str(i), str(id_), timestamp, action, customer)
             else:
