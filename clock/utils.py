@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import calendar
 import os
 import typer
@@ -103,3 +104,50 @@ def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockSta
             elif row[2] == 'in' and status != ClockStatus.OUT:
                 status = ClockStatus.IN
     return status
+
+
+def get_sum(customer: str, config_dir: str, table_name: str):
+    with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
+        # Check if the number of clock-ins and clock-outs are equal
+        check_query = """
+            SELECT
+                COUNT(CASE WHEN "action" = 'in' THEN 1 END) AS total_in,
+                COUNT(CASE WHEN "action" = 'out' THEN 1 END) AS total_out
+            FROM
+                {table_name}
+            WHERE
+                "customer" = '{customer}';
+        """
+        check_query = check_query.format(
+            table_name=table_name, customer=customer)
+        check_result = db.execute_query(check_query)
+        if check_result:
+            total_in = check_result[0][0]
+            total_out = check_result[0][1]
+            if total_in != total_out:
+                return "Error: Unequal number of clock-ins and clock-outs"
+
+        # Calculate the total time
+        query = """
+            SELECT
+                "customer",
+                SUM(CASE WHEN "action" = 'in' THEN CAST(SUBSTR("time", 1, 2) AS INTEGER) * 60 + CAST(SUBSTR("time", 4, 2) AS INTEGER) ELSE 0 END) AS total_in_minutes,
+                SUM(CASE WHEN "action" = 'out' THEN CAST(SUBSTR("time", 1, 2) AS INTEGER) * 60 + CAST(SUBSTR("time", 4, 2) AS INTEGER) ELSE 0 END) AS total_out_minutes
+            FROM
+                {table_name}
+            WHERE
+                "customer" = '{customer}'
+            GROUP BY
+                "customer";
+        """
+        query = query.format(table_name=table_name, customer=customer)
+        result = db.execute_query(query)
+        if result:
+            total_in_minutes = result[0][1]
+            total_out_minutes = result[0][2]
+            total_time_minutes = total_out_minutes - total_in_minutes
+            hours = int(total_time_minutes // 60)
+            minutes = int(total_time_minutes % 60)
+            return f"{hours:02d}:{minutes:02d}"
+        else:
+            return "0:00"

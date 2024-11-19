@@ -9,7 +9,7 @@ from rich.table import Table
 from typing import Annotated
 from .local_db import LocalDatabase
 from .utils import (add_entry, ClockStatus, create_directories, create_file,
-                    find_status_by_date, get_rows, validate_month)
+                    find_status_by_date, get_rows, get_sum, validate_month)
 
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
@@ -61,6 +61,15 @@ def clock_show(
     """Display clock-in/clock-out records."""
     month = validate_month(month)
     print(get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME))
+
+
+@app.command(name="sum")
+def clock_sum(customer: str = None,
+              month: str = typer.Option(str(datetime.now().strftime('%m'))),
+              year: str = typer.Option(str(datetime.now().strftime('%Y')))):
+    """Summerize clocked time for a customer"""
+    print(get_sum(customer=customer or typer.prompt('Customer'),
+                  config_dir=CONFIG_DIR, table_name=DEFAULT_TABLE_NAME))
 
 
 @config_app.command('dir')
