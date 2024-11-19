@@ -26,7 +26,7 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.critical(f'Connection failed with error: {e}')
 
-    def execute_query(self, query, params=None):
+    def execute_query(self, query: str, params: tuple = None):
         try:
             if params:
                 self.cursor.execute(query, params)
@@ -71,7 +71,7 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.error("Error creating the database:", e)
 
-    def create_table(self, table_name, columns) -> bool:
+    def create_table(self, table_name: str, columns: list) -> bool:
         try:
             self.connect()
             query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns)})"
@@ -83,7 +83,7 @@ class Database:
             LOGGER.error("Error creating the table:", e)
             return False
 
-    def delete_table(self, table_name) -> bool:
+    def delete_table(self, table_name: str) -> bool:
         try:
             self.connect()
             query = f"DROP TABLE {table_name}"
@@ -95,7 +95,7 @@ class Database:
             LOGGER.error("Error dropping the table:", e)
             return False
 
-    def insert_row(self, table_name, data) -> None:
+    def insert_row(self, table_name: str, data: list | tuple) -> None:
         try:
             self.connect()
             query = f"INSERT INTO {table_name} VALUES ({','.join(['?'] * len(data))})"
@@ -105,7 +105,7 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.error(f"Error inserting row into table '{table_name}': {e}")
 
-    def delete_row(self, table_name, where_clause) -> None:
+    def delete_row(self, table_name: str, where_clause: str) -> None:
         try:
             self.connect()
             query = f"DELETE FROM {table_name} WHERE {where_clause}"
@@ -115,7 +115,7 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.error(f"Error deleting row from table '{table_name}': {e}")
 
-    def read_all_rows(self, table_name) -> list | None:
+    def read_all_rows(self, table_name: str) -> list | None:
         try:
             self.connect()
             query = f"SELECT * FROM {table_name}"

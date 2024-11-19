@@ -106,7 +106,7 @@ def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockSta
     return status
 
 
-def get_sum(customer: str, config_dir: str, table_name: str):
+def get_sum(customer: str, config_dir: str, table_name: str) -> str:
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         # Check if the number of clock-ins and clock-outs are equal
         check_query = """
