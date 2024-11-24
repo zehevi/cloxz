@@ -25,7 +25,7 @@ def create_directories(config_dir: str, data_dir: str):
 def create_file(filename: str):
     if not os.path.exists(filename):
         try:
-            with open(filename, 'w+'):
+            with open(filename, "w+"):
                 pass
         except:
             print("Failed to create clock file")
@@ -36,7 +36,7 @@ def create_file(filename: str):
 
 
 def validate_month(month: str) -> int:
-    if month.lower() == 'current':
+    if month.lower() == "current":
         return datetime.now().month
     try:
         month_num = int(month)
@@ -58,37 +58,40 @@ def add_entry(customer: str, action: str, config_dir: str, table_name: str):
     if customer is None:
         customer = typer.prompt("Customer")
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
-        db.insert_row(table_name, (
-            str(datetime.now().strftime("%Y-%m-%d")),
-            str(datetime.now().strftime('%H:%M')),
-            action,
-            customer
-        ))
+        db.insert_row(
+            table_name,
+            (
+                str(datetime.now().strftime("%Y-%m-%d")),
+                str(datetime.now().strftime("%H:%M")),
+                action,
+                customer,
+            ),
+        )
 
 
 def get_rows(config_dir: str, table_name: str, print_line_num: bool = False):
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         table = Table()
         if print_line_num:
-            table.add_column('')
-        table.add_column('Date')
-        table.add_column('Time')
-        table.add_column('Action')
-        table.add_column('Customer')
+            table.add_column("")
+        table.add_column("Date")
+        table.add_column("Time")
+        table.add_column("Action")
+        table.add_column("Customer")
         for i, row in enumerate(db.read_all_rows(table_name), start=1):
             id_, timestamp, action, customer = row
             match action:
-                case 'in':
-                    action = '[green]in[/green]'
-                case 'out':
-                    action = '[red]out[/red]'
-                case 'task':
-                    action = '[blue]task[/blue]'
+                case "in":
+                    action = "[green]in[/green]"
+                case "out":
+                    action = "[red]out[/red]"
+                case "task":
+                    action = "[blue]task[/blue]"
             if print_line_num:
                 table.add_row(str(i), str(id_), timestamp, action, customer)
             else:
                 table.add_row(str(id_), timestamp, action, customer)
-        return (table)
+        return table
 
 
 def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockStatus:
@@ -99,9 +102,9 @@ def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockSta
 
     for row in entries:
         if row[0] == date:
-            if row[2] == 'out':
+            if row[2] == "out":
                 status = ClockStatus.OUT
-            elif row[2] == 'in' and status != ClockStatus.OUT:
+            elif row[2] == "in" and status != ClockStatus.OUT:
                 status = ClockStatus.IN
     return status
 
@@ -118,8 +121,7 @@ def get_sum(customer: str, config_dir: str, table_name: str) -> str:
             WHERE
                 "customer" = '{customer}';
         """
-        check_query = check_query.format(
-            table_name=table_name, customer=customer)
+        check_query = check_query.format(table_name=table_name, customer=customer)
         check_result = db.execute_query(check_query)
         if check_result:
             total_in = check_result[0][0]
@@ -128,6 +130,7 @@ def get_sum(customer: str, config_dir: str, table_name: str) -> str:
                 return "Error: Unequal number of clock-ins and clock-outs"
 
         # Calculate the total time
+        # FIXME: Needs refactoring, does not calculate time over 24 hours well
         query = """
             SELECT
                 "customer",
@@ -148,6 +151,6 @@ def get_sum(customer: str, config_dir: str, table_name: str) -> str:
             total_time_minutes = total_out_minutes - total_in_minutes
             hours = int(total_time_minutes // 60)
             minutes = int(total_time_minutes % 60)
-            return f"{hours:02d}:{minutes:02d}"
+            return f"{hours}:{minutes:02d}"
         else:
             return "0:00"
