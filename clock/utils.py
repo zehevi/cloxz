@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import calendar
 import os
 import typer
+import subprocess
 from datetime import datetime
 from enum import Enum
 from rich.table import Table
@@ -166,3 +167,14 @@ def get_table_name(month: str | int, year: str | int) -> str:
     )
     _year = year if year not in (None, "") else datetime.now().strftime("%Y")
     return f"data_{_year}_{_month}"
+
+def is_git_repo(path):
+    try:
+        # Check if the .git directory exists
+        return os.path.exists(os.path.join(path, ".git"))
+    except (OSError, IOError):
+        return False
+
+def git_add(filename: str):
+    try:
+        subprocess.run("git",check=True)
