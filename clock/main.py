@@ -20,7 +20,7 @@ from .utils import (
     get_sum,
     validate_month,
 )
-
+from statistics import median
 
 CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
 DATA_DIR = CONFIG_DIR / "data"
@@ -62,8 +62,18 @@ def clock_show(
     year: str = typer.Option(str(datetime.now().strftime("%Y"))),
 ):
     """Display clock-in/clock-out records."""
-    month = validate_month(month)
-    print(get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME))
+    valid_month = validate_month(month)
+    _month = (
+        valid_month
+        if valid_month == median([1, 12, valid_month])
+        else datetime.now().strftime("%m")
+    )
+    _year = year if year not in (None, "") else datetime.now().strftime("%Y")
+    table_name = f"data_{_year}_{_month}"
+    try:
+        print(get_rows(CONFIG_DIR, table_name))
+    except Exception:
+        print(f"Failed to retrieve data for {_month}.{_year}")
 
 
 @app.command(name="sum")

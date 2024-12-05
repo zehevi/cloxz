@@ -2,11 +2,11 @@ import sqlite3
 import logging
 
 LOGGER = logging.Logger(__name__)
-LOGGER.setLevel(logging.ERROR)
+LOGGER.setLevel(logging.CRITICAL)
 
 
 class Database:
-    def __init__(self, database_file: str = 'database.db') -> None:
+    def __init__(self, database_file: str = "database.db") -> None:
         self.database_file = database_file
         self.conn = None
         self.cursor = None
@@ -24,7 +24,7 @@ class Database:
             self.cursor = self.conn.cursor()
             LOGGER.info("Connected to database")
         except sqlite3.Error as e:
-            LOGGER.critical(f'Connection failed with error: {e}')
+            LOGGER.critical(f"Connection failed with error: {e}")
 
     def execute_query(self, query: str, params: tuple = None):
         try:
@@ -66,8 +66,7 @@ class Database:
     def create_database(self):
         try:
             self.connect()
-            LOGGER.info(
-                f"Database '{self.database_file}' created successfully.")
+            LOGGER.info(f"Database '{self.database_file}' created successfully.")
         except sqlite3.Error as e:
             LOGGER.error("Error creating the database:", e)
 
@@ -133,7 +132,7 @@ class Database:
             query = "SELECT name FROM sqlite_master WHERE type='table';"
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
-            LOGGER.info(f'Read {len(rows)} tables from database')
+            LOGGER.info(f"Read {len(rows)} tables from database")
             return rows
         except sqlite3.Error as e:
             LOGGER.error(f"Error reading from sqlite_master", e)
