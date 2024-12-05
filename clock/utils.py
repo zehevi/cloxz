@@ -5,6 +5,7 @@ import typer
 from datetime import datetime
 from enum import Enum
 from rich.table import Table
+from statistics import median
 from .local_db import LocalDatabase
 
 
@@ -154,3 +155,14 @@ def get_sum(customer: str, config_dir: str, table_name: str) -> str:
             return f"{hours}:{minutes:02d}"
         else:
             return "0:00"
+
+
+def get_table_name(month: str | int, year: str | int) -> str:
+    valid_month = validate_month(month)
+    _month = (
+        valid_month
+        if valid_month == median([1, 12, valid_month])
+        else datetime.now().strftime("%m")
+    )
+    _year = year if year not in (None, "") else datetime.now().strftime("%Y")
+    return f"data_{_year}_{_month}"

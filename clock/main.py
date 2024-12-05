@@ -19,6 +19,7 @@ from .utils import (
     get_rows,
     get_sum,
     validate_month,
+    get_table_name,
 )
 from statistics import median
 
@@ -62,18 +63,12 @@ def clock_show(
     year: str = typer.Option(str(datetime.now().strftime("%Y"))),
 ):
     """Display clock-in/clock-out records."""
-    valid_month = validate_month(month)
-    _month = (
-        valid_month
-        if valid_month == median([1, 12, valid_month])
-        else datetime.now().strftime("%m")
-    )
-    _year = year if year not in (None, "") else datetime.now().strftime("%Y")
-    table_name = f"data_{_year}_{_month}"
+    table_name = get_table_name(month, year)
     try:
         print(get_rows(CONFIG_DIR, table_name))
     except Exception:
-        print(f"Failed to retrieve data for {_month}.{_year}")
+        _date = table_name.lstrip("data_").split("_")
+        print(f"Failed to retrieve data for {_date[1]}.{_date[0]}")
 
 
 @app.command(name="sum")
