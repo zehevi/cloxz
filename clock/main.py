@@ -82,7 +82,7 @@ def clock_sum(
         get_sum(
             customer=customer or typer.prompt("Customer"),
             config_dir=CONFIG_DIR,
-            table_name=DEFAULT_TABLE_NAME,
+            table_name=get_table_name(month, year),
         )
     )
 
