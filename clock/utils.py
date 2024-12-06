@@ -10,6 +10,9 @@ from statistics import median
 from .local_db import LocalDatabase
 
 
+ORIGINAL_DIR = os.getcwd()
+
+
 class ClockStatus(Enum):
     NONE = 0
     IN = 1
@@ -168,13 +171,40 @@ def get_table_name(month: str | int, year: str | int) -> str:
     _year = year if year not in (None, "") else datetime.now().strftime("%Y")
     return f"data_{_year}_{_month}"
 
-def is_git_repo(path):
+
+def is_git_repo(path: str):
     try:
         # Check if the .git directory exists
         return os.path.exists(os.path.join(path, ".git"))
     except (OSError, IOError):
         return False
 
+
+def init_repo(path: str):
+    try:
+        os.chdir(path)
+        subprocess.run(
+            ["git", "init"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+        os.chdir(ORIGINAL_DIR)
+        return True
+    except FileNotFoundError:
+        print(f"Error: The directory '{path}' does not exist.")
+        return False
+    except subprocess.CalledProcessError:
+        print("Error: Failed to initialize the Git repository.")
+        return False
+    except OSError as e:
+        print(f"Error: {e}")
+    except Exception as e:
+        return e
+
+
 def git_add(filename: str):
     try:
-        subprocess.run("git",check=True)
+        subprocess.run("git", args=["add", "."], check=True)
+    except Exception as e:
+        print(e)

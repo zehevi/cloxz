@@ -15,11 +15,12 @@ from .utils import (
     ClockStatus,
     create_directories,
     create_file,
+    is_git_repo,
     find_status_by_date,
     get_rows,
     get_sum,
-    validate_month,
     get_table_name,
+    init_repo,
 )
 from statistics import median
 
@@ -146,6 +147,30 @@ def drop_table(month: str, year: str):
             print(f"[green]Table {table_name} dropped[/green]")
         else:
             print(f"[red]Could not drop table [{table_name}][/red]")
+
+
+@config_app.command()
+def check_git():
+    """Check if data directory is a git repo"""
+    try:
+        print(is_git_repo(CONFIG_DIR))
+    except Exception:
+        print(f"{CONFIG_DIR} is not a git repo")
+
+
+@config_app.command()
+def git_init():
+    """initiate config directory's repo"""
+    try:
+        if is_git_repo(CONFIG_DIR):
+            print("Directory is already a git repo, [yellow]skipping[/yellow]")
+            return
+        if init_repo(CONFIG_DIR):
+            print("Git repo initiated [green]successfully[/green]")
+        else:
+            print("[red]Failed[/red] to initiate git repo")
+    except Exception as e:
+        print("Failed to initiate git repo", e)
 
 
 @app.command()
