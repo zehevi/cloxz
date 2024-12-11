@@ -40,6 +40,9 @@ def validate_month(month: str) -> int:
     if month.lower() == "current":
         return datetime.now().month
     try:
+        if month.startswith("-"):
+            month = datetime.now().month - int(month[1:])
+
         month_num = int(month)
         if 1 <= month_num <= 12:
             return month_num
