@@ -21,6 +21,7 @@ from .utils import (
     get_sum,
     get_table_name,
     init_repo,
+    git_sync,
 )
 from statistics import median
 
@@ -43,6 +44,7 @@ app.add_typer(config_app)
 def clock_in(customer: str = typer.Argument(None)):
     """Clock in for the day."""
     add_entry(customer, "in", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    git_sync(CONFIG_DIR)
 
 
 # TODO: Support time and date input / picker

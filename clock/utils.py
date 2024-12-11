@@ -208,3 +208,36 @@ def git_add(filename: str):
         subprocess.run("git", args=["add", "."], check=True)
     except Exception as e:
         print(e)
+
+
+def git_command(command: list, path: str):
+    try:
+        os.chdir(path)
+        subprocess.run(
+            ["git"] + command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+        os.chdir(ORIGINAL_DIR)
+        return True
+    except FileNotFoundError:
+        print(f"Error: The directory '{path}' does not exist.")
+        return False
+    except subprocess.CalledProcessError:
+        print("Error: Failed to initialize the Git repository.")
+        return False
+    except OSError as e:
+        print(f"Error: {e}")
+    except Exception as e:
+        return e
+
+
+def git_sync(path: str):
+    if not (
+        git_command(["add", "."], path)
+        and git_command(["commit", "-m", '"Update"'], path)
+        and git_command(["push"], path)
+    ):
+        return False
+    return True
