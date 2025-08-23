@@ -5,8 +5,9 @@ import typer
 from datetime import datetime
 from enum import Enum
 from rich.table import Table
+from rich import box
 from statistics import median
-from .local_db import LocalDatabase
+from local_db import LocalDatabase
 
 
 class ClockStatus(Enum):
@@ -73,17 +74,23 @@ def add_entry(customer: str, action: str, config_dir: str, table_name: str):
         )
 
 
-def get_rows(config_dir: str, table_name: str, print_line_num: bool = False):
+def get_rows(
+    config_dir: str, table_name: str, print_line_num: bool = False, title: str = None
+):
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
-        table = Table()
+        rows = db.read_all_rows(table_name)
+        if rows is None:
+            return None
+
+        table = Table(title=title, box=box.ROUNDED)
         if print_line_num:
             table.add_column("")
         table.add_column("Date")
         table.add_column("Time")
         table.add_column("Action")
         table.add_column("Customer")
-        for i, row in enumerate(db.read_all_rows(table_name), start=1):
-            id_, timestamp, action, customer = row
+        for i, row in enumerate(rows, start=1):
+            date, time, action, customer = row
             match action:
                 case "in":
                     action = "[green]in[/green]"
@@ -92,9 +99,9 @@ def get_rows(config_dir: str, table_name: str, print_line_num: bool = False):
                 case "task":
                     action = "[blue]task[/blue]"
             if print_line_num:
-                table.add_row(str(i), str(id_), timestamp, action, customer)
+                table.add_row(str(i), date, time, action, customer)
             else:
-                table.add_row(str(id_), timestamp, action, customer)
+                table.add_row(date, time, action, customer)
         return table
 
 
@@ -161,11 +168,8 @@ def get_sum(customer: str, config_dir: str, table_name: str) -> str:
 
 
 def get_table_name(month: str | int, year: str | int) -> str:
-    valid_month = validate_month(month)
-    _month = (
-        valid_month
-        if valid_month == median([1, 12, valid_month])
-        else datetime.now().strftime("%m")
-    )
+    # validate_month expects a string
+    valid_month = validate_month(str(month))
+    _month = f"{valid_month:02d}"
     _year = year if year not in (None, "") else datetime.now().strftime("%Y")
     return f"data_{_year}_{_month}"

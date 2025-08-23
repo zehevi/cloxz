@@ -1,16 +1,18 @@
 import os
 import pathlib
-import pkg_resources
+from importlib import metadata
 import subprocess
 import tempfile
+import calendar
 import typer
 import typer.completion
 from datetime import datetime
 from rich import print
 from rich.table import Table
+from rich import box
 from typing import Annotated, Optional
-from .local_db import LocalDatabase
-from .utils import (
+from local_db import LocalDatabase
+from utils import (
     add_entry,
     ClockStatus,
     create_directories,
@@ -42,6 +44,7 @@ app.add_typer(config_app)
 def clock_in(customer: str = typer.Argument(None)):
     """Clock in for the day."""
     add_entry(customer, "in", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    
 
 
 # TODO: Support time and date input / picker
@@ -64,12 +67,15 @@ def clock_show(
 ):
     """Display clock-in/clock-out records."""
     table_name = get_table_name(month, year)
-    try:
-        print(get_rows(CONFIG_DIR, table_name))
-    except Exception:
-        _date = table_name.lstrip("data_").split("_")
-        print(f"Failed to retrieve data for {_date[1]}.{_date[0]}")
+    _year, _month = table_name.lstrip("data_").split("_")
+    month_name = calendar.month_name[int(_month)]
+    title = f"Clock Records for {month_name} {_year}"
 
+    table = get_rows(CONFIG_DIR, table_name, title=title)
+    if table is None:
+        print(f"Failed to retrieve data for {month_name} {_year}. The table might not exist.")
+    else:
+        print(table)
 
 @app.command(name="sum")
 def clock_sum(
@@ -101,10 +107,14 @@ def show_tables():
     List all tables in the database.
     """
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        table = Table()
-        table.add_column("Table")
-        for row in db.get_all_tables():
-            table.add_row(row[0])
+        table = Table(title="Database Tables", box=box.ROUNDED)
+        table.add_column("Table Name")
+        all_tables = db.get_all_tables()
+        if all_tables:
+            for row in all_tables:
+                table.add_row(row[0])
+        else:
+            table.add_row("[italic]No tables found.[/italic]")
         print(table)
 
 
@@ -117,17 +127,15 @@ def create_db():
 
 @config_app.command("create-table")
 def create_db_table(
-    month: Annotated[str, typer.Option(..., prompt=True)] = str(
-        datetime.now().strftime("%m")
-    ),
-    year: Annotated[str, typer.Option(..., prompt=True)] = str(
-        datetime.now().strftime("%Y")
-    ),
+    month: Annotated[str, typer.Option(..., prompt=True)],
+    year: Annotated[str, typer.Option(..., prompt=True)],
 ):
     """Create a new database table."""
+    valid_month = validate_month(month)
+    padded_month = f"{valid_month:02d}"
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
         if not db.create_table(
-            table_name=f"data_{year}_{month}",
+            table_name=f"data_{year}_{padded_month}",
             columns=["date TEXT", "time TEXT", "action TEXT", "customer TEXT"],
         ):
             print("[red]Database table failed to create[/red]")
@@ -151,11 +159,22 @@ def drop_table(month: str, year: str):
 @app.command()
 def delete():
     """Delete a specific clock-in/clock-out record."""
-    print(get_rows(CONFIG_DIR, DEFAULT_TABLE_NAME, True))
+    table_name = DEFAULT_TABLE_NAME
+    _year, _month = table_name.lstrip("data_").split("_")
+    month_name = calendar.month_name[int(_month)]
+    title = f"Clock Records for {month_name} {_year}"
+
+    table = get_rows(CONFIG_DIR, table_name, print_line_num=True, title=title)
+
+    if table is None or table.row_count == 0:
+        print(f"No records found for {month_name} {_year} to delete.")
+        raise typer.Exit()
+
+    print(table)
 
     entries = []
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
-        reader = db.read_all_rows(DEFAULT_TABLE_NAME)
+        reader = db.read_all_rows(table_name)
         for i, row in enumerate(reader, start=1):
             entries.append((i,) + row)
 
@@ -163,17 +182,25 @@ def delete():
             "\nEnter the line number of the entry you want to delete", type=int
         )
 
+        entry_to_delete = None
         for entry in entries:
             if entry[0] == line_number:
-                _, date, time, action, customer = entry
+                entry_to_delete = entry
+                break
 
-        typer.confirm("Are you sure you want to delete?", abort=True)
+        if not entry_to_delete:
+            print(f"[red]Error: Invalid line number {line_number}.[/red]")
+            raise typer.Exit(1)
+
+        _, date, time, action, customer = entry_to_delete
+
+        typer.confirm(f"Are you sure you want to delete entry {line_number}?", abort=True)
 
         db.delete_row(
-            DEFAULT_TABLE_NAME,
+            table_name,
             f"date = '{date}' AND time = '{time}' AND action = '{action}' AND customer = '{customer}'",
         )
-
+        print(f"[green]Entry {line_number} deleted successfully.[/green]")
 
 @app.command()
 def status():
@@ -234,7 +261,10 @@ def edit_table(
 
 def _version_callback(value: bool) -> None:
     if value:
-        print(pkg_resources.get_distribution("cloxz").version)
+        try:
+            print(metadata.version("cloxz"))
+        except metadata.PackageNotFoundError:
+            print("Version for 'cloxz' not found. Is it installed?")
         raise typer.Exit()
 
 
@@ -252,8 +282,10 @@ def main(
     create_directories(CONFIG_DIR, DATA_DIR)
     if not os.path.exists(CSV_FILE_PATH):
         create_file(CSV_FILE_PATH)
-    create_db()
-    create_db_table()
+    # The create_db() call is redundant.
+    # Always ensure the table for the current month exists on startup.
+    create_db_table(month=datetime.now().strftime('%m'),
+                    year=datetime.now().strftime('%Y'))
 
 
 if __name__ == "__main__":
