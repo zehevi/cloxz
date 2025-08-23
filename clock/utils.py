@@ -59,18 +59,21 @@ def validate_month(month: str) -> int:
             raise typer.Exit(code=1)
 
 
-def add_entry(note: str, action: str, config_dir: str, table_name: str):
-    if note is None:
-        note = typer.prompt("Note")
+def add_entry(
+    note: str,
+    action: str,
+    config_dir: str,
+    table_name: str,
+    date: str | None = None,
+    time: str | None = None,
+):
+    entry_date = date or datetime.now().strftime("%Y-%m-%d")
+    entry_time = time or datetime.now().strftime("%H:%M")
+
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         db.insert_row(
             table_name,
-            (
-                str(datetime.now().strftime("%Y-%m-%d")),
-                str(datetime.now().strftime("%H:%M")),
-                action,
-                note,
-            ),
+            (entry_date, entry_time, action, note),
         )
 
 

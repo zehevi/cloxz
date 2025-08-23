@@ -29,35 +29,125 @@ CONFIG_DIR = pathlib.Path.home() / ".config/clockz"
 DATA_DIR = CONFIG_DIR / "data"
 CSV_FILE = f"{datetime.now().strftime('%B')}.csv"
 CSV_FILE_PATH = DATA_DIR / CSV_FILE
-DEFAULT_TABLE_NAME = (
-    f'data_{datetime.now().strftime("%Y")}_{datetime.now().strftime("%m")}'
-)
 
 
 app = typer.Typer(name="cxz")
 config_app = typer.Typer(name="config", help="Configuration reletad commands.")
 app.add_typer(config_app)
 
+def get_default_table_name() -> str:
+    """Returns the table name for the current month and year."""
+    return f'data_{datetime.now().strftime("%Y")}_{datetime.now().strftime("%m")}'
 
-# TODO: Support time and date input / picker
+
+def _get_table_for_date(date: str | None) -> str:
+    """Get table name for a given date string, creating it if necessary."""
+    if not date:
+        return get_default_table_name()
+
+    try:
+        parsed_date = datetime.strptime(date, "%Y-%m-%d")
+        month, year = str(parsed_date.month), str(parsed_date.year)
+        # This creates the table if it doesn't exist, as it's called non-interactively.
+        create_db_table(month=month, year=year)
+        return get_table_name(month, year)
+    except ValueError:
+        print("[red]Error: Date must be in YYYY-MM-DD format.[/red]")
+        raise typer.Exit(1)
+
+
+def _get_clock_entry_details(
+    note: str | None, date: str | None, time: str | None
+) -> tuple[str, str | None, str | None]:
+    """If note is not provided, prompt for note, and any missing date/time."""
+    if note is None:
+        # Interactive mode
+        note = typer.prompt("Note")
+        date = date or typer.prompt(
+            "Date (YYYY-MM-DD)", default=datetime.now().strftime("%Y-%m-%d")
+        )
+        time = time or typer.prompt(
+            "Time (HH:MM)", default=datetime.now().strftime("%H:%M")
+        )
+    return note, date, time
+
+
 @app.command(name="in")
-def clock_in(note: str = typer.Argument(None, help="A note about the clock-in event.")):
+def clock_in(
+    note: str = typer.Argument(None, help="A note about the clock-in event."),
+    date: Annotated[
+        str,
+        typer.Option(
+            "--date",
+            "-d",
+            help="Date of the entry in YYYY-MM-DD format. Defaults to today.",
+        ),
+    ] = None,
+    time: Annotated[
+        str,
+        typer.Option(
+            "--time",
+            "-t",
+            help="Time of the entry in HH:MM format. Defaults to now.",
+        ),
+    ] = None,
+):
     """Clock in for the day."""
-    add_entry(note, "in", CONFIG_DIR, DEFAULT_TABLE_NAME)
-    
+    note, date, time = _get_clock_entry_details(note, date, time)
+    table_name = _get_table_for_date(date)
+    add_entry(note, "in", CONFIG_DIR, table_name, date, time)
 
 
-# TODO: Support time and date input / picker
 @app.command(name="out")
-def clock_out(note: str = typer.Argument(None, help="A note about the clock-out event.")):
+def clock_out(
+    note: str = typer.Argument(None, help="A note about the clock-out event."),
+    date: Annotated[
+        str,
+        typer.Option(
+            "--date",
+            "-d",
+            help="Date of the entry in YYYY-MM-DD format. Defaults to today.",
+        ),
+    ] = None,
+    time: Annotated[
+        str,
+        typer.Option(
+            "--time",
+            "-t",
+            help="Time of the entry in HH:MM format. Defaults to now.",
+        ),
+    ] = None,
+):
     """Clock out for the day."""
-    add_entry(note, "out", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    note, date, time = _get_clock_entry_details(note, date, time)
+    table_name = _get_table_for_date(date)
+    add_entry(note, "out", CONFIG_DIR, table_name, date, time)
 
 
 @app.command(name="task")
-def clock_task(note: str = typer.Argument(None, help="A note about the task.")):
+def clock_task(
+    note: str = typer.Argument(None, help="A note about the task."),
+    date: Annotated[
+        str,
+        typer.Option(
+            "--date",
+            "-d",
+            help="Date of the entry in YYYY-MM-DD format. Defaults to today.",
+        ),
+    ] = None,
+    time: Annotated[
+        str,
+        typer.Option(
+            "--time",
+            "-t",
+            help="Time of the entry in HH:MM format. Defaults to now.",
+        ),
+    ] = None,
+):
     """Mark a task in the timetable."""
-    add_entry(note, "task", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    note, date, time = _get_clock_entry_details(note, date, time)
+    table_name = _get_table_for_date(date)
+    add_entry(note, "task", CONFIG_DIR, table_name, date, time)
 
 
 @app.command(name="show")
@@ -159,7 +249,7 @@ def drop_table(month: str, year: str):
 @app.command()
 def delete():
     """Delete a specific clock-in/clock-out record."""
-    table_name = DEFAULT_TABLE_NAME
+    table_name = get_default_table_name()
     _year, _month = table_name.lstrip("data_").split("_")
     month_name = calendar.month_name[int(_month)]
     title = f"Clock Records for {month_name} {_year}"
@@ -207,7 +297,7 @@ def delete():
 def status():
     """Display the clock-in/out status for today."""
     date = datetime.now().strftime("%Y-%m-%d")
-    match find_status_by_date(date, CONFIG_DIR, DEFAULT_TABLE_NAME):
+    match find_status_by_date(date, CONFIG_DIR, get_default_table_name()):
         case ClockStatus.NONE:
             print("No clocking entry found for today")
         case ClockStatus.IN:
