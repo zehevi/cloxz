@@ -59,9 +59,9 @@ def validate_month(month: str) -> int:
             raise typer.Exit(code=1)
 
 
-def add_entry(customer: str, action: str, config_dir: str, table_name: str):
-    if customer is None:
-        customer = typer.prompt("Customer")
+def add_entry(note: str, action: str, config_dir: str, table_name: str):
+    if note is None:
+        note = typer.prompt("Note")
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         db.insert_row(
             table_name,
@@ -69,7 +69,7 @@ def add_entry(customer: str, action: str, config_dir: str, table_name: str):
                 str(datetime.now().strftime("%Y-%m-%d")),
                 str(datetime.now().strftime("%H:%M")),
                 action,
-                customer,
+                note,
             ),
         )
 
@@ -88,9 +88,9 @@ def get_rows(
         table.add_column("Date")
         table.add_column("Time")
         table.add_column("Action")
-        table.add_column("Customer")
+        table.add_column("Note")
         for i, row in enumerate(rows, start=1):
-            date, time, action, customer = row
+            date, time, action, note = row
             match action:
                 case "in":
                     action = "[green]in[/green]"
@@ -99,9 +99,9 @@ def get_rows(
                 case "task":
                     action = "[blue]task[/blue]"
             if print_line_num:
-                table.add_row(str(i), date, time, action, customer)
+                table.add_row(str(i), date, time, action, note)
             else:
-                table.add_row(date, time, action, customer)
+                table.add_row(date, time, action, note)
         return table
 
 
@@ -120,20 +120,19 @@ def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockSta
     return status
 
 
-def get_sum(customer: str, config_dir: str, table_name: str) -> str:
+def get_sum(note: str, config_dir: str, table_name: str) -> str:
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         # Check if the number of clock-ins and clock-outs are equal
-        check_query = """
+        check_query = f"""
             SELECT
                 COUNT(CASE WHEN "action" = 'in' THEN 1 END) AS total_in,
                 COUNT(CASE WHEN "action" = 'out' THEN 1 END) AS total_out
             FROM
-                {table_name}
+                "{table_name}"
             WHERE
-                "customer" = '{customer}';
+                "note" = ?;
         """
-        check_query = check_query.format(table_name=table_name, customer=customer)
-        check_result = db.execute_query(check_query)
+        check_result = db.execute_query(check_query, (note,))
         if check_result:
             total_in = check_result[0][0]
             total_out = check_result[0][1]
@@ -142,20 +141,19 @@ def get_sum(customer: str, config_dir: str, table_name: str) -> str:
 
         # Calculate the total time
         # FIXME: Needs refactoring, does not calculate time over 24 hours well
-        query = """
+        query = f"""
             SELECT
-                "customer",
+                "note",
                 SUM(CASE WHEN "action" = 'in' THEN CAST(SUBSTR("time", 1, 2) AS INTEGER) * 60 + CAST(SUBSTR("time", 4, 2) AS INTEGER) ELSE 0 END) AS total_in_minutes,
                 SUM(CASE WHEN "action" = 'out' THEN CAST(SUBSTR("time", 1, 2) AS INTEGER) * 60 + CAST(SUBSTR("time", 4, 2) AS INTEGER) ELSE 0 END) AS total_out_minutes
             FROM
-                {table_name}
+                "{table_name}"
             WHERE
-                "customer" = '{customer}'
+                "note" = ?
             GROUP BY
-                "customer";
+                "note";
         """
-        query = query.format(table_name=table_name, customer=customer)
-        result = db.execute_query(query)
+        result = db.execute_query(query, (note,))
         if result:
             total_in_minutes = result[0][1]
             total_out_minutes = result[0][2]

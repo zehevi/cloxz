@@ -104,11 +104,11 @@ class Database:
         except sqlite3.Error as e:
             LOGGER.error(f"Error inserting row into table '{table_name}': {e}")
 
-    def delete_row(self, table_name: str, where_clause: str) -> None:
+    def delete_row(self, table_name: str, where_clause: str, params: tuple = ()) -> None:
         try:
             self.connect()
             query = f"DELETE FROM {table_name} WHERE {where_clause}"
-            self.cursor.execute(query)
+            self.cursor.execute(query, params)
             self.conn.commit()
             LOGGER.info(f"Row deleted from table '{table_name}'")
         except sqlite3.Error as e:

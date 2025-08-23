@@ -41,23 +41,23 @@ app.add_typer(config_app)
 
 # TODO: Support time and date input / picker
 @app.command(name="in")
-def clock_in(customer: str = typer.Argument(None)):
+def clock_in(note: str = typer.Argument(None, help="A note about the clock-in event.")):
     """Clock in for the day."""
-    add_entry(customer, "in", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    add_entry(note, "in", CONFIG_DIR, DEFAULT_TABLE_NAME)
     
 
 
 # TODO: Support time and date input / picker
 @app.command(name="out")
-def clock_out(customer: str = typer.Argument(None)):
+def clock_out(note: str = typer.Argument(None, help="A note about the clock-out event.")):
     """Clock out for the day."""
-    add_entry(customer, "out", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    add_entry(note, "out", CONFIG_DIR, DEFAULT_TABLE_NAME)
 
 
 @app.command(name="task")
-def clock_task(customer: str = typer.Argument(None)):
+def clock_task(note: str = typer.Argument(None, help="A note about the task.")):
     """Mark a task in the timetable."""
-    add_entry(customer, "task", CONFIG_DIR, DEFAULT_TABLE_NAME)
+    add_entry(note, "task", CONFIG_DIR, DEFAULT_TABLE_NAME)
 
 
 @app.command(name="show")
@@ -79,14 +79,14 @@ def clock_show(
 
 @app.command(name="sum")
 def clock_sum(
-    customer: str = None,
+    note: str = None,
     month: str = typer.Option(str(datetime.now().strftime("%m"))),
     year: str = typer.Option(str(datetime.now().strftime("%Y"))),
 ):
-    """Summerize clocked time for a customer"""
+    """Summarize clocked time for a specific note."""
     print(
         get_sum(
-            customer=customer or typer.prompt("Customer"),
+            note=note or typer.prompt("Note"),
             config_dir=CONFIG_DIR,
             table_name=get_table_name(month, year),
         )
@@ -136,7 +136,7 @@ def create_db_table(
     with LocalDatabase.Database(database_file=f"{CONFIG_DIR}/database.db") as db:
         if not db.create_table(
             table_name=f"data_{year}_{padded_month}",
-            columns=["date TEXT", "time TEXT", "action TEXT", "customer TEXT"],
+            columns=["date TEXT", "time TEXT", "action TEXT", "note TEXT"],
         ):
             print("[red]Database table failed to create[/red]")
 
@@ -192,13 +192,14 @@ def delete():
             print(f"[red]Error: Invalid line number {line_number}.[/red]")
             raise typer.Exit(1)
 
-        _, date, time, action, customer = entry_to_delete
+        _, date, time, action, note = entry_to_delete
 
         typer.confirm(f"Are you sure you want to delete entry {line_number}?", abort=True)
 
         db.delete_row(
             table_name,
-            f"date = '{date}' AND time = '{time}' AND action = '{action}' AND customer = '{customer}'",
+            "date = ? AND time = ? AND action = ? AND note = ?",
+            (date, time, action, note),
         )
         print(f"[green]Entry {line_number} deleted successfully.[/green]")
 
@@ -251,7 +252,7 @@ def edit_table(
 
         db.delete_table(table_name)
         db.create_table(
-            table_name, ["date TEXT", "time TEXT", "action TEXT", "customer TEXT"]
+            table_name, ["date TEXT", "time TEXT", "action TEXT", "note TEXT"]
         )
         for row in updated_rows:
             db.insert_row(table_name, row)
