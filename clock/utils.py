@@ -111,16 +111,19 @@ def get_rows(
 def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockStatus:
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         entries = db.read_all_rows(table_name)
+    if not entries:
+        return ClockStatus.NONE
 
-    status = ClockStatus.NONE
+    # Filter for the given date and get the last action, since entries are now sorted by date and time
+    day_entries = [
+        row for row in entries if row[0] == date and row[2] in ("in", "out")
+    ]
 
-    for row in entries:
-        if row[0] == date:
-            if row[2] == "out":
-                status = ClockStatus.OUT
-            elif row[2] == "in" and status != ClockStatus.OUT:
-                status = ClockStatus.IN
-    return status
+    if not day_entries:
+        return ClockStatus.NONE
+
+    last_action = day_entries[-1][2]
+    return ClockStatus.IN if last_action == "in" else ClockStatus.OUT
 
 
 def get_sum(note: str, config_dir: str, table_name: str) -> str:

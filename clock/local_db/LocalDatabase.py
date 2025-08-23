@@ -117,7 +117,7 @@ class Database:
     def read_all_rows(self, table_name: str) -> list | None:
         try:
             self.connect()
-            query = f"SELECT * FROM {table_name}"
+            query = f"SELECT * FROM {table_name} ORDER BY date, time"
             self.cursor.execute(query)
             rows = self.cursor.fetchall()
             LOGGER.info(f"Read {len(rows)} rows from table '{table_name}'")
