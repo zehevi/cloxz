@@ -11,8 +11,8 @@ from rich import print
 from rich.table import Table
 from rich import box
 from typing import Annotated, Optional
-from local_db import LocalDatabase
-from utils import (
+from .local_db import LocalDatabase
+from .utils import (
     add_entry,
     ClockStatus,
     create_directories,
@@ -377,7 +377,3 @@ def main(
     # Always ensure the table for the current month exists on startup.
     create_db_table(month=datetime.now().strftime('%m'),
                     year=datetime.now().strftime('%Y'))
-
-
-if __name__ == "__main__":
-    app()

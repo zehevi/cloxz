@@ -2,12 +2,11 @@ from datetime import datetime, timedelta
 import calendar
 import os
 import typer
-from datetime import datetime
 from enum import Enum
 from rich.table import Table
 from rich import box
 from statistics import median
-from local_db import LocalDatabase
+from .local_db import LocalDatabase
 
 
 class ClockStatus(Enum):
