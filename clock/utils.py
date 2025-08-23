@@ -9,12 +9,6 @@ from statistics import median
 from .local_db import LocalDatabase
 
 
-class ClockStatus(Enum):
-    NONE = 0
-    IN = 1
-    OUT = 2
-
-
 def create_directories(config_dir: str, data_dir: str):
     """Create the necessary directories if they don't exist."""
     if not os.path.exists(config_dir):
@@ -107,22 +101,49 @@ def get_rows(
         return table
 
 
-def find_status_by_date(date: str, config_dir: str, table_name: str) -> ClockStatus:
+def get_last_clock_entry(date: str, config_dir: str, table_name: str) -> tuple | None:
+    """Fetches the last 'in' or 'out' entry for a given date."""
     with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
         entries = db.read_all_rows(table_name)
     if not entries:
-        return ClockStatus.NONE
+        return None
 
     # Filter for the given date and get the last action, since entries are now sorted by date and time
     day_entries = [
         row for row in entries if row[0] == date and row[2] in ("in", "out")
     ]
 
-    if not day_entries:
-        return ClockStatus.NONE
+    return day_entries[-1] if day_entries else None
 
-    last_action = day_entries[-1][2]
-    return ClockStatus.IN if last_action == "in" else ClockStatus.OUT
+
+def get_total_day_duration(date: str, config_dir: str, table_name: str) -> timedelta:
+    """Calculates the total clocked duration for a given day."""
+    with LocalDatabase.Database(database_file=f"{config_dir}/database.db") as db:
+        entries = db.read_all_rows(table_name)
+    if not entries:
+        return timedelta(0)
+
+    day_entries = [row for row in entries if row[0] == date and row[2] in ("in", "out")]
+
+    if not day_entries:
+        return timedelta(0)
+
+    total_duration = timedelta()
+    last_in_time = None
+
+    for _, time_str, action, _ in day_entries:
+        entry_datetime = datetime.strptime(f"{date} {time_str}", "%Y-%m-%d %H:%M")
+
+        if action == "in":
+            last_in_time = entry_datetime
+        elif action == "out" and last_in_time:
+            total_duration += entry_datetime - last_in_time
+            last_in_time = None
+
+    if last_in_time:
+        total_duration += datetime.now() - last_in_time
+
+    return total_duration
 
 
 def get_sum(note: str, config_dir: str, table_name: str) -> str:

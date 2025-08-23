@@ -9,18 +9,19 @@ import typer.completion
 from datetime import datetime
 from rich import print
 from rich.table import Table
+from rich.panel import Panel
 from rich import box
 from typing import Annotated, Optional
 from .local_db import LocalDatabase
 from .utils import (
     add_entry,
-    ClockStatus,
     create_directories,
     create_file,
-    find_status_by_date,
+    get_last_clock_entry,
     get_rows,
     get_sum,
     validate_month,
+    get_total_day_duration,
     get_table_name,
 )
 from statistics import median
@@ -296,14 +297,33 @@ def delete():
 @app.command()
 def status():
     """Display the clock-in/out status for today."""
-    date = datetime.now().strftime("%Y-%m-%d")
-    match find_status_by_date(date, CONFIG_DIR, get_default_table_name()):
-        case ClockStatus.NONE:
-            print("No clocking entry found for today")
-        case ClockStatus.IN:
-            print("Found a clock-in entry for today")
-        case ClockStatus.OUT:
-            print("found clock-out entry for today")
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    table_name = get_default_table_name()
+    last_entry = get_last_clock_entry(today_str, CONFIG_DIR, table_name)
+    total_duration = get_total_day_duration(today_str, CONFIG_DIR, table_name)
+
+    total_seconds = int(total_duration.total_seconds())
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    duration_str = f"{hours:02d}:{minutes:02d}"
+    duration_line = f"Total time today: [bold yellow]{duration_str}[/bold yellow]"
+
+    if not last_entry:
+        # panel_text = "You are [bold red]Clocked Out[/bold red].\nNo entries found for today."
+        panel_text = "You are [bold yellow]Not clocked in.[/bold yellow]\nNo entries found for today."
+        print(Panel(f"{panel_text}\n{duration_line}", title="Status", expand=False, border_style="yellow"))
+        return
+
+    _, time, action, note = last_entry
+
+    if action == "in":
+        status_text = "You are [bold green]Clocked In[/bold green]."
+        details = f"Clocked in at [cyan]{time}[/cyan] with note: '[italic]{note}[/italic]'"
+        print(Panel(f"{status_text}\n{details}\n{duration_line}", title="Status", expand=False, border_style="green"))
+    else:  # action == "out"
+        status_text = "You are [bold red]Clocked Out[/bold red]."
+        details = f"Clocked out at [cyan]{time}[/cyan] with note: '[italic]{note}[/italic]'"
+        print(Panel(f"{status_text}\n{details}\n{duration_line}", title="Status", expand=False, border_style="red"))
 
 
 @app.command("edit")
