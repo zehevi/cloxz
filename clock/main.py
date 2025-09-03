@@ -36,6 +36,7 @@ app = typer.Typer(name="cxz")
 config_app = typer.Typer(name="config", help="Configuration reletad commands.")
 app.add_typer(config_app)
 
+
 def get_default_table_name() -> str:
     """Returns the table name for the current month and year."""
     return f'data_{datetime.now().strftime("%Y")}_{datetime.now().strftime("%m")}'
@@ -164,9 +165,12 @@ def clock_show(
 
     table = get_rows(CONFIG_DIR, table_name, title=title)
     if table is None:
-        print(f"Failed to retrieve data for {month_name} {_year}. The table might not exist.")
+        print(
+            f"Failed to retrieve data for {month_name} {_year}. The table might not exist."
+        )
     else:
         print(table)
+
 
 @app.command(name="sum")
 def clock_sum(
@@ -285,7 +289,9 @@ def delete():
 
         _, date, time, action, note = entry_to_delete
 
-        typer.confirm(f"Are you sure you want to delete entry {line_number}?", abort=True)
+        typer.confirm(
+            f"Are you sure you want to delete entry {line_number}?", abort=True
+        )
 
         db.delete_row(
             table_name,
@@ -294,11 +300,23 @@ def delete():
         )
         print(f"[green]Entry {line_number} deleted successfully.[/green]")
 
+
 @app.command()
-def status():
+def status(
+    prompt: Annotated[
+        bool,
+        typer.Option(
+            "--prompt",
+            "-p",
+            help="Prompt to clock in if you are clocked out.",
+            is_flag=True,
+        ),
+    ] = False,
+):
     """Display the clock-in/out status for today."""
     today_str = datetime.now().strftime("%Y-%m-%d")
     table_name = get_default_table_name()
+
     last_entry = get_last_clock_entry(today_str, CONFIG_DIR, table_name)
     total_duration = get_total_day_duration(today_str, CONFIG_DIR, table_name)
 
@@ -308,22 +326,70 @@ def status():
     duration_str = f"{hours:02d}:{minutes:02d}"
     duration_line = f"Total time today: [bold yellow]{duration_str}[/bold yellow]"
 
+    is_clocked_in = last_entry and last_entry[2] == "in"
+
+    if not is_clocked_in and prompt:
+        note = typer.prompt(
+            "You are clocked out. Clock in with a note (or press Enter to cancel)",
+            default="",
+            show_default=False,
+        )
+        if note:
+            add_entry(note, "in", CONFIG_DIR, table_name, date=None, time=None)
+            print(
+                f"[green]Successfully clocked in with note: '[italic]{note}[/italic]'[/green]"
+            )
+            # Re-fetch status after clocking in
+            last_entry = get_last_clock_entry(today_str, CONFIG_DIR, table_name)
+            total_duration = get_total_day_duration(today_str, CONFIG_DIR, table_name)
+            total_seconds = int(total_duration.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            duration_str = f"{hours:02d}:{minutes:02d}"
+            duration_line = (
+                f"Total time today: [bold yellow]{duration_str}[/bold yellow]"
+            )
+
     if not last_entry:
-        # panel_text = "You are [bold red]Clocked Out[/bold red].\nNo entries found for today."
         panel_text = "You are [bold yellow]Not clocked in.[/bold yellow]\nNo entries found for today."
-        print(Panel(f"{panel_text}\n{duration_line}", title="Status", expand=False, border_style="yellow"))
+        print(
+            Panel(
+                f"{panel_text}\n{duration_line}",
+                title="Status",
+                expand=False,
+                border_style="yellow",
+            )
+        )
         return
 
     _, time, action, note = last_entry
 
     if action == "in":
         status_text = "You are [bold green]Clocked In[/bold green]."
-        details = f"Clocked in at [cyan]{time}[/cyan] with note: '[italic]{note}[/italic]'"
-        print(Panel(f"{status_text}\n{details}\n{duration_line}", title="Status", expand=False, border_style="green"))
+        details = (
+            f"Clocked in at [cyan]{time}[/cyan] with note: '[italic]{note}[/italic]'"
+        )
+        print(
+            Panel(
+                f"{status_text}\n{details}\n{duration_line}",
+                title="Status",
+                expand=False,
+                border_style="green",
+            )
+        )
     else:  # action == "out"
         status_text = "You are [bold red]Clocked Out[/bold red]."
-        details = f"Clocked out at [cyan]{time}[/cyan] with note: '[italic]{note}[/italic]'"
-        print(Panel(f"{status_text}\n{details}\n{duration_line}", title="Status", expand=False, border_style="red"))
+        details = (
+            f"Clocked out at [cyan]{time}[/cyan] with note: '[italic]{note}[/italic]'"
+        )
+        print(
+            Panel(
+                f"{status_text}\n{details}\n{duration_line}",
+                title="Status",
+                expand=False,
+                border_style="red",
+            )
+        )
 
 
 @app.command("edit")
@@ -395,5 +461,6 @@ def main(
         create_file(CSV_FILE_PATH)
     # The create_db() call is redundant.
     # Always ensure the table for the current month exists on startup.
-    create_db_table(month=datetime.now().strftime('%m'),
-                    year=datetime.now().strftime('%Y'))
+    create_db_table(
+        month=datetime.now().strftime("%m"), year=datetime.now().strftime("%Y")
+    )
